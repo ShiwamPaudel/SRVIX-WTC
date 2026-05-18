@@ -7,6 +7,7 @@ import type {
   Customer,
   DeviceModel,
   Engineer,
+  EngineerLocationLog,
   Installation,
   Machine,
   NotificationRecord,
@@ -23,6 +24,7 @@ type TableName =
   | "contracts"
   | "tickets"
   | "engineers"
+  | "engineer_location_logs"
   | "ticket_logs"
   | "pms_schedule"
   | "users"
@@ -123,6 +125,15 @@ const columns = {
     "LiveLongitude",
     "LastLocationUpdate",
   ],
+  engineer_location_logs: [
+    "LocationLogID",
+    "EngineerID",
+    "EngineerName",
+    "Latitude",
+    "Longitude",
+    "Remarks",
+    "CreatedAt",
+  ],
   ticket_logs: [
     "LogID",
     "TicketID",
@@ -166,6 +177,7 @@ const idColumns = {
   contracts: "ContractID",
   tickets: "TicketID",
   engineers: "EngineerID",
+  engineer_location_logs: "LocationLogID",
   ticket_logs: "LogID",
   pms_schedule: "PMSID",
   users: "UserID",
@@ -354,6 +366,9 @@ export const dataService = {
     const rows = await readTable<Engineer>("engineers", "EngineerName");
     return rows.map((row) => normalizeEngineer(row));
   },
+  async engineerLocationLogs() {
+    return readTable<EngineerLocationLog>("engineer_location_logs", "CreatedAt");
+  },
   async ticketLogs() {
     return readTable<TicketLog>("ticket_logs", "UpdateDate");
   },
@@ -380,6 +395,9 @@ export const dataService = {
   },
   async createUser(user: AppUser) {
     return insertRecord<AppUser>("users", user);
+  },
+  async updateUser(userId: string, patch: Partial<AppUser>) {
+    return updateRecord<AppUser>("users", userId, patch);
   },
   async createInstallation(installation: Installation) {
     return insertRecord<Installation>("installations", installation);
@@ -428,6 +446,9 @@ export const dataService = {
       LiveLongitude: longitude,
       LastLocationUpdate: new Date().toISOString(),
     });
+  },
+  async createEngineerLocationLog(log: EngineerLocationLog) {
+    return insertRecord<EngineerLocationLog>("engineer_location_logs", log);
   },
   async createNotification(notification: NotificationRecord) {
     return insertRecord<NotificationRecord>("notifications", notification);

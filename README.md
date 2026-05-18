@@ -1,6 +1,6 @@
 # WTC Service Management
 
-Professional medical equipment field service system built with Next.js 15, TypeScript, Tailwind CSS, Turso, Google Drive, Google Maps, NextAuth, and PWA support.
+Professional medical equipment field service system built with Next.js 15, TypeScript, Tailwind CSS, Turso, Google Drive, OpenStreetMap, NextAuth, and PWA support.
 
 ## Local Development
 

@@ -4,7 +4,7 @@ import { dataService } from "@/lib/turso/service";
 import type { TicketWithRelations, UserRole } from "@/types/service";
 
 export async function getServiceDataset() {
-  const [customers, deviceModels, installations, contracts, machines, tickets, engineers, logs, pmsSchedule, notifications] =
+  const [customers, deviceModels, installations, contracts, machines, tickets, engineers, logs, pmsSchedule, notifications, locationLogs] =
     await Promise.all([
       dataService.customers(),
       dataService.deviceModels(),
@@ -16,9 +16,10 @@ export async function getServiceDataset() {
       dataService.ticketLogs(),
       dataService.pmsSchedule(),
       dataService.notifications(),
+      dataService.engineerLocationLogs(),
     ]);
 
-  return { customers, deviceModels, installations, contracts, machines, tickets, engineers, logs, pmsSchedule, notifications };
+  return { customers, deviceModels, installations, contracts, machines, tickets, engineers, logs, pmsSchedule, notifications, locationLogs };
 }
 
 export async function getTicketsWithRelations(role?: UserRole, engineerId?: string) {
@@ -54,6 +55,14 @@ export async function getDashboardMetrics() {
   const pendingPms = dataset.pmsSchedule.filter((pms) => pms.Status !== "Completed").length;
   const activeEngineers = dataset.engineers.filter((engineer) => engineer.ActiveStatus !== "Inactive").length;
   const critical = dataset.tickets.filter((ticket) => ticket.Priority === "Critical").length;
+  const datedClosedTickets = dataset.tickets.filter((ticket) => ticket.TicketStatus === "Closed" && ticket.TicketDate);
+  const inSla = datedClosedTickets.filter((ticket) => {
+    const openedAt = new Date(`${ticket.TicketDate}T00:00:00`).getTime();
+    const closedAt = new Date(`${ticket.CompletionDate || ticket.LastUpdated || ticket.TicketDate}T00:00:00`).getTime();
+    if (Number.isNaN(openedAt) || Number.isNaN(closedAt)) return false;
+    return closedAt - openedAt <= 2 * 24 * 60 * 60 * 1000;
+  }).length;
+  const slaPulse = datedClosedTickets.length ? Math.round((inSla / datedClosedTickets.length) * 100) : 0;
 
-  return { ...dataset, open, closed, pendingPms, activeEngineers, critical };
+  return { ...dataset, open, closed, pendingPms, activeEngineers, critical, slaPulse };
 }

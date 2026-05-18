@@ -44,48 +44,71 @@ export function ContractRenewalForm({ customers, machines }: { customers: Custom
     }
 
     toast.success("Contract updated and PMS dates generated");
-    setMachineId("");
+    router.push("/contracts");
     router.refresh();
   }
 
   return (
-    <form action={submit} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm xl:grid-cols-[1fr_1fr_130px_130px_150px]">
-      <SelectNative
-        value={customerId}
-        onChange={(event) => {
-          setCustomerId(event.target.value);
-          setMachineId("");
-        }}
-        aria-label="Customer"
-      >
-        <option value="">Select institution</option>
-        {customers.map((customer) => (
-          <option key={customer.CustomerID} value={customer.CustomerID}>
-            {customer.HospitalName || customer.NameOfCustomer}
-          </option>
-        ))}
-      </SelectNative>
-      <SelectNative value={machineId} onChange={(event) => setMachineId(event.target.value)} aria-label="Machine">
-        <option value="">Select machine</option>
-        {customerMachines.map((machine) => (
-          <option key={machine.MachineID} value={machine.MachineID}>
-            {[machine.Model, machine.SerialNumber, machine.Department].filter(Boolean).join(" - ")}
-          </option>
-        ))}
-      </SelectNative>
-      <SelectNative name="contractType" defaultValue="AMC" aria-label="Contract type">
-        <option value="AMC">AMC</option>
-        <option value="CMC">CMC</option>
-        <option value="RRC">RRC</option>
-      </SelectNative>
-      <Input name="renewalYears" type="number" min="1" step="1" defaultValue="1" aria-label="Renewal years" />
-      <Input name="contractStart" type="date" defaultValue={new Date().toISOString().slice(0, 10)} aria-label="Contract start" />
-      <Input name="pmsIntervalDays" type="number" min="1" step="1" value={defaultInterval} readOnly aria-label="PMS interval days" />
-      <Input className="xl:col-span-3" name="remarks" placeholder="Remarks or reagent rental terms" aria-label="Remarks" />
-      <Button disabled={isSubmitting || !machineId}>
-        <FilePlus2 className="size-4" />
-        {isSubmitting ? "Updating..." : "Create Renewal"}
-      </Button>
+    <form action={submit} className="grid gap-4 lg:grid-cols-2">
+      <label className="space-y-2">
+        <span className="text-sm font-medium text-slate-700">Institution</span>
+        <SelectNative
+          value={customerId}
+          onChange={(event) => {
+            setCustomerId(event.target.value);
+            setMachineId("");
+          }}
+          aria-label="Customer"
+        >
+          <option value="">Select institution</option>
+          {customers.map((customer) => (
+            <option key={customer.CustomerID} value={customer.CustomerID}>
+              {customer.HospitalName || customer.NameOfCustomer}
+            </option>
+          ))}
+        </SelectNative>
+      </label>
+      <label className="space-y-2">
+        <span className="text-sm font-medium text-slate-700">Machine</span>
+        <SelectNative value={machineId} onChange={(event) => setMachineId(event.target.value)} aria-label="Machine">
+          <option value="">Select machine</option>
+          {customerMachines.map((machine) => (
+            <option key={machine.MachineID} value={machine.MachineID}>
+              {[machine.Model, machine.SerialNumber, machine.Department].filter(Boolean).join(" - ")}
+            </option>
+          ))}
+        </SelectNative>
+      </label>
+      <label className="space-y-2">
+        <span className="text-sm font-medium text-slate-700">Contract type</span>
+        <SelectNative name="contractType" defaultValue="AMC" aria-label="Contract type">
+          <option value="AMC">AMC</option>
+          <option value="CMC">CMC</option>
+          <option value="RRC">RRC</option>
+        </SelectNative>
+      </label>
+      <label className="space-y-2">
+        <span className="text-sm font-medium text-slate-700">Renewal years</span>
+        <Input name="renewalYears" type="number" min="1" step="1" defaultValue="1" aria-label="Renewal years" />
+      </label>
+      <label className="space-y-2">
+        <span className="text-sm font-medium text-slate-700">Contract start</span>
+        <Input name="contractStart" type="date" defaultValue={new Date().toISOString().slice(0, 10)} aria-label="Contract start" />
+      </label>
+      <label className="space-y-2">
+        <span className="text-sm font-medium text-slate-700">PMS interval days</span>
+        <Input name="pmsIntervalDays" type="number" min="1" step="1" value={defaultInterval} readOnly aria-label="PMS interval days" />
+      </label>
+      <label className="space-y-2 lg:col-span-2">
+        <span className="text-sm font-medium text-slate-700">Remarks</span>
+        <Input name="remarks" placeholder="Remarks or reagent rental terms" aria-label="Remarks" />
+      </label>
+      <div className="flex justify-end lg:col-span-2">
+        <Button disabled={isSubmitting || !machineId}>
+          <FilePlus2 className="size-4" />
+          {isSubmitting ? "Creating..." : "Create Renewal"}
+        </Button>
+      </div>
     </form>
   );
 }

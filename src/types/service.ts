@@ -121,6 +121,16 @@ export type Engineer = {
   LastLocationUpdate?: string;
 };
 
+export type EngineerLocationLog = {
+  LocationLogID: string;
+  EngineerID: string;
+  EngineerName: string;
+  Latitude: string;
+  Longitude: string;
+  Remarks: string;
+  CreatedAt: string;
+};
+
 export type Ticket = {
   TicketID: string;
   TicketDate: string;

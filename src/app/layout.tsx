@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SRVIX for WTC",
-  description: "Professional medical equipment service management system",
+  title: "SRVIX - WTC",
+  description: "Scalable Service Management System Made for your Business - Automate the Service Workflow",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

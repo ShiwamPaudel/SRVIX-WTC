@@ -204,8 +204,9 @@ export default async function MachinesPage({
 
             <div className="grid gap-4 xl:grid-cols-2">
               {machines.map((machine) => (
-                <article
+                <Link
                   key={machine.MachineID}
+                  href={`/machines/${machine.MachineID}`}
                   className="grid overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm sm:grid-cols-[168px_1fr]"
                 >
                   <div className="aspect-[4/3] sm:aspect-auto sm:min-h-full">
@@ -278,7 +279,7 @@ export default async function MachinesPage({
                       </div>
                     ) : null}
                   </div>
-                </article>
+                </Link>
               ))}
             </div>
           </section>

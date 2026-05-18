@@ -14,12 +14,14 @@ export function DashboardCards({
   pendingPms,
   activeEngineers,
   critical,
+  slaPulse,
 }: {
   open: number;
   closed: number;
   pendingPms: number;
   activeEngineers: number;
   critical: number;
+  slaPulse: number;
 }) {
   const metrics: Metric[] = [
     { label: "Pending Tickets", value: open, detail: "Needs service action", icon: ClipboardList },
@@ -27,7 +29,7 @@ export function DashboardCards({
     { label: "Pending PMS", value: pendingPms, detail: "Due or scheduled", icon: CalendarClock },
     { label: "Active Engineers", value: activeEngineers, detail: "Field capacity", icon: Users },
     { label: "Critical", value: critical, detail: "Escalation queue", icon: AlertTriangle },
-    { label: "SLA Pulse", value: "94%", detail: "Response compliance", icon: Activity },
+    { label: "SLA Pulse", value: `${slaPulse}%`, detail: "Closed within 48 hrs", icon: Activity },
   ];
 
   return (

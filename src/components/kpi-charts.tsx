@@ -4,18 +4,41 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Ticket, Engineer } from "@/types/service";
 
-export function KPICharts({ tickets, engineers }: { tickets: Ticket[]; engineers: Engineer[] }) {
-  const trend = ["May 10", "May 11", "May 12", "May 13", "May 14"].map((day, index) => ({
-    day,
-    tickets: Math.max(1, tickets.length + index - 2),
-    closed: Math.max(0, index - 1),
-  }));
+const dayMs = 24 * 60 * 60 * 1000;
 
-  const performance = engineers.map((engineer, index) => ({
-    name: engineer.EngineerName.split(" ")[0],
-    resolved: 5 - index,
-    pending: index + 1,
-  }));
+function dateKey(value?: string) {
+  if (!value) return "";
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+function shortDay(value: string) {
+  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(`${value}T00:00:00`));
+}
+
+export function KPICharts({ tickets, engineers }: { tickets: Ticket[]; engineers: Engineer[] }) {
+  const today = new Date();
+  const trend = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today.getTime() - (6 - index) * dayMs).toISOString().slice(0, 10);
+    return {
+      day: shortDay(date),
+      opened: tickets.filter((ticket) => dateKey(ticket.TicketDate || ticket.Date) === date).length,
+      closed: tickets.filter((ticket) => ticket.TicketStatus === "Closed" && dateKey(ticket.CompletionDate || ticket.LastUpdated) === date).length,
+    };
+  });
+
+  const performance = engineers
+    .map((engineer) => {
+      const assigned = tickets.filter((ticket) => ticket.AssignedEngineer === engineer.EngineerID);
+      return {
+        name: engineer.EngineerName.split(" ")[0] || engineer.EngineerID,
+        resolved: assigned.filter((ticket) => ticket.TicketStatus === "Closed").length,
+        pending: assigned.filter((ticket) => ticket.TicketStatus !== "Closed").length,
+      };
+    })
+    .filter((engineer) => engineer.resolved || engineer.pending)
+    .slice(0, 8);
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
@@ -30,7 +53,7 @@ export function KPICharts({ tickets, engineers }: { tickets: Ticket[]; engineers
               <XAxis dataKey="day" tickLine={false} axisLine={false} />
               <YAxis tickLine={false} axisLine={false} />
               <Tooltip />
-              <Line type="monotone" dataKey="tickets" stroke="#0284c7" strokeWidth={3} />
+              <Line type="monotone" dataKey="opened" stroke="#0284c7" strokeWidth={3} />
               <Line type="monotone" dataKey="closed" stroke="#059669" strokeWidth={3} />
             </LineChart>
           </ResponsiveContainer>

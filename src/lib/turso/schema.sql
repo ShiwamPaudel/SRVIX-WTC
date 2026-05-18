@@ -104,6 +104,16 @@ CREATE TABLE IF NOT EXISTS engineers (
   LastLocationUpdate TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS engineer_location_logs (
+  LocationLogID TEXT PRIMARY KEY,
+  EngineerID TEXT NOT NULL DEFAULT '',
+  EngineerName TEXT NOT NULL DEFAULT '',
+  Latitude TEXT NOT NULL DEFAULT '',
+  Longitude TEXT NOT NULL DEFAULT '',
+  Remarks TEXT NOT NULL DEFAULT '',
+  CreatedAt TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS ticket_logs (
   LogID TEXT PRIMARY KEY,
   TicketID TEXT NOT NULL DEFAULT '',
@@ -164,3 +174,5 @@ CREATE INDEX IF NOT EXISTS idx_pms_customer ON pms_schedule (CustomerID);
 CREATE INDEX IF NOT EXISTS idx_pms_due_date ON pms_schedule (DueDate);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (Email);
 CREATE INDEX IF NOT EXISTS idx_engineers_email ON engineers (Email);
+CREATE INDEX IF NOT EXISTS idx_engineer_location_logs_engineer ON engineer_location_logs (EngineerID);
+CREATE INDEX IF NOT EXISTS idx_engineer_location_logs_created ON engineer_location_logs (CreatedAt);

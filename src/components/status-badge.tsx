@@ -2,9 +2,9 @@ import { Badge } from "@/components/ui/badge";
 import type { ContractType, Priority, TicketStatus } from "@/types/service";
 
 export function StatusBadge({ status }: { status: TicketStatus | string }) {
-  const normalized = status === "Closed" || status === "Resolved" ? "Closed" : "Pending";
+  const normalized = status === "Closed" || status === "Resolved" || status === "Done" ? "Closed" : "Pending";
   const variant = normalized === "Closed" ? "green" : "amber";
-  return <Badge variant={variant}>{normalized}</Badge>;
+  return <Badge variant={variant}>{status === "Done" ? "Done" : normalized}</Badge>;
 }
 
 export function PriorityBadge({ priority }: { priority: Priority | string }) {

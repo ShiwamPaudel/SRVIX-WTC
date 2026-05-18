@@ -1,22 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Navigation } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { LocateFixed } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 export function LiveLocationTracker({ engineerId }: { engineerId?: string }) {
-  const [tracking, setTracking] = useState(false);
-  const watchId = useRef<number | null>(null);
-  const lastSent = useRef(0);
+  const router = useRouter();
+  const [remarks, setRemarks] = useState("");
+  const [sending, setSending] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current);
-    };
-  }, []);
-
-  function start() {
+  function sendLocation() {
     if (!engineerId) {
       toast.error("Engineer profile missing");
       return;
@@ -25,38 +21,49 @@ export function LiveLocationTracker({ engineerId }: { engineerId?: string }) {
       toast.error("GPS is not available in this browser");
       return;
     }
-    setTracking(true);
-    watchId.current = navigator.geolocation.watchPosition(
+
+    setSending(true);
+    navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const now = Date.now();
-        if (now - lastSent.current < 60000) return;
-        lastSent.current = now;
-        await fetch("/api/engineers/location", {
+        const response = await fetch("/api/engineers/location", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             engineerId,
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
+            remarks,
           }),
         });
+        setSending(false);
+        if (!response.ok) {
+          toast.error("Location could not be sent");
+          return;
+        }
+        setRemarks("");
+        toast.success("Location sent", { description: "The live map has your latest position." });
+        router.refresh();
       },
-      () => toast.error("Location permission denied"),
-      { enableHighAccuracy: false, maximumAge: 45000, timeout: 15000 },
+      () => {
+        setSending(false);
+        toast.error("Location permission denied");
+      },
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 },
     );
-    toast.success("Live tracking started", { description: "Updates are throttled to preserve battery." });
-  }
-
-  function stop() {
-    if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current);
-    watchId.current = null;
-    setTracking(false);
   }
 
   return (
-    <Button type="button" variant={tracking ? "destructive" : "default"} onClick={tracking ? stop : start}>
-      <Navigation className="size-4" />
-      {tracking ? "Stop tracking" : "Start GPS tracking"}
-    </Button>
+    <div className="space-y-3">
+      <Textarea
+        value={remarks}
+        onChange={(event) => setRemarks(event.target.value)}
+        placeholder="Remarks"
+        rows={3}
+      />
+      <Button type="button" onClick={sendLocation} disabled={sending}>
+        <LocateFixed className="size-4" />
+        {sending ? "Sending..." : "Send Location"}
+      </Button>
+    </div>
   );
 }

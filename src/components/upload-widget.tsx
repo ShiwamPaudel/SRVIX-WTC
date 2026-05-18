@@ -46,7 +46,7 @@ export function UploadWidget({ onUploaded }: { onUploaded?: (urls: string[]) => 
         </div>
         <label>
           <input className="sr-only" type="file" accept="image/*" capture="environment" multiple onChange={onChange} />
-          <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-medium text-white">
+          <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#00000c] px-4 text-sm font-medium text-white">
             {loading ? <UploadCloud className="size-4 animate-pulse" /> : <Camera className="size-4" />}
             {loading ? "Uploading..." : "Capture / Upload"}
           </span>

@@ -1,6 +1,7 @@
-import { AlertTriangle, CalendarClock, CheckCircle2 } from "lucide-react";
-import { ContractRenewalForm } from "@/components/contract-renewal-form";
+import Link from "next/link";
+import { AlertTriangle, CalendarClock, CheckCircle2, FilePlus2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
 import { getServiceDataset } from "@/lib/data";
@@ -64,9 +65,17 @@ export default async function ContractsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Contracts</h1>
-        <p className="text-sm text-slate-500">Track machines whose warranty or contract has expired, or will expire in the next 30 days.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-[#00000c]">Contracts</h1>
+          <p className="text-sm text-slate-500">Track machines whose warranty or contract has expired, or will expire in the next 30 days.</p>
+        </div>
+        <Button asChild>
+          <Link href="/contracts/new">
+            <FilePlus2 className="size-4" />
+            Create Renewal
+          </Link>
+        </Button>
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -74,18 +83,6 @@ export default async function ContractsPage() {
         <Metric title="Expiring 30 days" value={expiringSoon.length} tone="amber" icon={CalendarClock} />
         <Metric title="Active coverage" value={active.length} tone="green" icon={CheckCircle2} />
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Renewal</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ContractRenewalForm customers={customers} machines={machines} />
-          <p className="mt-3 text-sm text-slate-500">
-            RRC is a contract type for a specific machine. Use remarks for reagent rental commitments or reagent pricing terms.
-          </p>
-        </CardContent>
-      </Card>
 
       <ContractList title="Machines Expiring This Month" rows={expiringSoon} empty="No machines expire in the next 30 days." tone="amber" />
       <ContractList title="Expired Machines" rows={expired} empty="No expired machines found." tone="rose" />

@@ -52,6 +52,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ pm
     .sort((a, b) => new Date(b.ContractEnd).getTime() - new Date(a.ContractEnd).getTime())[0];
   const computedWarrantyStatus = warrantyStatus(machine.WarrantyExpiry);
   const pmsNumber = pms.PMSNumber || "";
+  const customerName = customer?.NameOfCustomer || customer?.HospitalName || machine.NameOfCustomer || "";
   const now = new Date().toISOString();
 
   const ticket: Ticket = {
@@ -59,11 +60,11 @@ export async function POST(_request: Request, { params }: { params: Promise<{ pm
     TicketDate: now.slice(0, 10),
     Date: now.slice(0, 10),
     CustomerID: customer?.CustomerID ?? machine.CustomerID,
-    NameOfCustomer: customer?.NameOfCustomer || customer?.HospitalName || machine.NameOfCustomer || "",
+    NameOfCustomer: customerName,
     MachineID: machine.MachineID,
     InstallationID: machine.InstallationID ?? machine.MachineID,
     Model: machine.Model,
-    TicketTitle: `${pmsNumber ? `PMS No. ${pmsNumber}` : "PMS"} - ${machine.Model || machine.DeviceName}`,
+    TicketTitle: `${pmsNumber ? `PMS No. ${pmsNumber}` : "PMS"} - ${machine.Model || machine.DeviceName} at ${customerName || "Customer"}`,
     ProblemDescription: `Scheduled preventive maintenance due on ${pms.DueDate}.`,
     Description: `Scheduled preventive maintenance due on ${pms.DueDate}.`,
     ServiceType: "PMS",

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
 import { getServiceDataset } from "@/lib/data";
-import type { PMSSchedule } from "@/types/service";
+import type { PMSSchedule, Ticket } from "@/types/service";
 
 type PMSRow = PMSSchedule & {
   due: Date;
@@ -16,6 +16,9 @@ type PMSRow = PMSSchedule & {
   customerName: string;
   engineerName: string;
   pmsNumber: string;
+  ticket?: Ticket;
+  displayStatus: string;
+  isCompleted: boolean;
 };
 
 function parseDate(value: string) {
@@ -48,7 +51,7 @@ function dueLabel(row: PMSRow, today: Date) {
 }
 
 export default async function PMSPage() {
-  const { pmsSchedule, machines, customers, engineers } = await getServiceDataset();
+  const { pmsSchedule, machines, customers, engineers, tickets } = await getServiceDataset();
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -57,6 +60,10 @@ export default async function PMSPage() {
       const machine = machines.find((item) => item.MachineID === pms.MachineID);
       const customer = customers.find((item) => item.CustomerID === pms.CustomerID);
       const engineer = engineers.find((item) => item.EngineerID === pms.AssignedEngineer);
+      const ticket = pms.TicketID
+        ? tickets.find((item) => item.TicketID === pms.TicketID)
+        : tickets.find((item) => item.PMSID === pms.PMSID);
+      const isCompleted = pms.Status === "Completed" || ticket?.TicketStatus === "Closed";
 
       return {
         ...pms,
@@ -68,6 +75,9 @@ export default async function PMSPage() {
         customerName: customer?.HospitalName ?? "Customer not linked",
         engineerName: engineer?.EngineerName ?? "Unassigned",
         pmsNumber: pms.PMSNumber || "",
+        ticket,
+        isCompleted,
+        displayStatus: isCompleted ? "Done" : pms.Status,
       };
     })
     .sort((a, b) => a.due.getTime() - b.due.getTime());
@@ -79,16 +89,16 @@ export default async function PMSPage() {
     if (!row.pmsNumber) row.pmsNumber = String(next);
   }
 
-  const activeRows = rows.filter((row) => row.Status !== "Completed");
+  const activeRows = rows.filter((row) => !row.isCompleted);
   const overdue = activeRows.filter((row) => row.due < today);
   const thisMonth = activeRows.filter((row) => sameMonth(row.due, today));
   const upcoming = activeRows.filter((row) => row.due >= today).slice(0, 8);
-  const completedThisMonth = rows.filter((row) => row.Status === "Completed" && sameMonth(row.due, today));
+  const completedThisMonth = rows.filter((row) => row.isCompleted && sameMonth(row.due, today));
 
   const plans = machines
     .map((machine) => {
       const machineRows = rows.filter((row) => row.MachineID === machine.MachineID);
-      const nextRows = machineRows.filter((row) => row.Status !== "Completed" && row.due >= today);
+      const nextRows = machineRows.filter((row) => !row.isCompleted && row.due >= today);
       const customer = customers.find((item) => item.CustomerID === machine.CustomerID);
 
       return {
@@ -97,7 +107,7 @@ export default async function PMSPage() {
         department: machine.Department ?? customer?.Department ?? "",
         next: nextRows[0],
         monthRows: machineRows.filter((row) => sameMonth(row.due, today)),
-        totalPending: machineRows.filter((row) => row.Status !== "Completed").length,
+        totalPending: machineRows.filter((row) => !row.isCompleted).length,
       };
     })
     .filter((plan) => plan.next || plan.monthRows.length)
@@ -164,7 +174,7 @@ export default async function PMSPage() {
                   </p>
                 </div>
                 <div className="flex items-center justify-start md:justify-end">
-                  <StatusBadge status={row.Status} />
+                  <StatusBadge status={row.displayStatus} />
                 </div>
                 <div className="flex justify-start lg:justify-end">
                   <PMSCreateTicketButton pmsId={row.PMSID} ticketId={row.TicketID} />
@@ -228,7 +238,7 @@ export default async function PMSPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {rows
-              .filter((row) => row.Status === "Completed")
+              .filter((row) => row.isCompleted)
               .slice(-8)
               .reverse()
               .map((row) => (
@@ -245,7 +255,7 @@ export default async function PMSPage() {
                   <PMSCreateTicketButton pmsId={row.PMSID} ticketId={row.TicketID} />
                 </div>
               ))}
-            {!rows.some((row) => row.Status === "Completed") ? (
+            {!rows.some((row) => row.isCompleted) ? (
               <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">No completed PMS records yet.</p>
             ) : null}
           </CardContent>
@@ -265,7 +275,7 @@ export default async function PMSPage() {
                   <p className="text-sm text-slate-500">{[row.customerName, row.machineModel].filter(Boolean).join(" - ")}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <StatusBadge status={row.Status} />
+                  <StatusBadge status={row.displayStatus} />
                   <PMSCreateTicketButton pmsId={row.PMSID} ticketId={row.TicketID} />
                 </div>
               </div>

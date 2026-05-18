@@ -13,31 +13,34 @@ export default async function LoginPage() {
         <div className="w-full max-w-md">
           <div className="mb-8">
             <div className="mb-5 flex items-center gap-3">
-              <Image src="/Logo - SRVIX.png" alt="SRVIX" width={56} height={56} className="size-14 object-contain" />
+              <Image src="/Logo - SRVIX.png" alt="SRVIX" width={180} height={48} className="h-12 w-auto max-w-[180px] object-contain" />
               <div className="h-10 w-px bg-slate-200" />
               <Image src="/Logo - WTC.png" alt="Web Trading Concern" width={92} height={48} className="h-12 w-auto object-contain" />
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-[#00000c]">SRVIX Service Management</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Built for Web Trading Concern Pvt. Ltd. to manage tickets, PMS schedules, engineers, assets, and customer history.
+            <h1 className="text-3xl font-semibold tracking-tight text-[#00000c]">SRVIX</h1>
+            <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
+              One Stop Tracking : Service | PMS | Warranty | Tickets
             </p>
           </div>
           <LoginForm />
-          <p className="mt-4 text-xs text-slate-500">
-            Demo access: admin@wtc.local, manager@wtc.local, or engineer@wtc.local with password demo123.
-          </p>
         </div>
       </section>
-      <section className="hidden bg-[#00000c] p-8 text-white lg:flex lg:flex-col lg:justify-between">
-        <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-          <p className="text-sm text-[#9edcff]">SRVIX live operations</p>
-          <h2 className="mt-3 text-4xl font-semibold tracking-tight">Built for fast response and accountable service closure.</h2>
+      <section className="hidden bg-[#f4fbff] p-8 text-[#00000c] lg:flex lg:flex-col lg:justify-between">
+        <div className="flex flex-1 items-center justify-center">
+          <Image
+            src="/srvix-hero.png"
+            alt="SRVIX dashboard preview"
+            width={1024}
+            height={768}
+            priority
+            className="h-auto w-full max-w-[720px] object-contain"
+          />
         </div>
         <div className="grid grid-cols-3 gap-3">
           {["Tickets", "PMS", "Tracking"].map((item) => (
-            <div key={item} className="rounded-lg border border-white/10 bg-white/5 p-4">
+            <div key={item} className="rounded-lg border border-[#dbeaf3] bg-white p-4">
               <p className="text-sm font-medium">{item}</p>
-              <p className="mt-2 text-xs text-slate-300">Mobile-ready workflow</p>
+              <p className="mt-2 text-xs text-slate-500">Mobile-ready workflow</p>
             </div>
           ))}
         </div>

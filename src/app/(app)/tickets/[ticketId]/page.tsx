@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Edit, Navigation } from "lucide-react";
 import { ActivityTimeline } from "@/components/activity-timeline";
+import { BackButton } from "@/components/back-button";
 import { GoogleMapView } from "@/components/google-map-view";
 import { SignaturePad } from "@/components/signature-pad";
 import { UploadWidget } from "@/components/upload-widget";
@@ -37,9 +38,12 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
             <ContractBadge contract={ticket.ContractType} />
           </div>
         </div>
-        <Button asChild variant="secondary">
-          <Link href={`/tickets/${ticket.TicketID}/edit`}><Edit className="size-4" />Edit</Link>
-        </Button>
+        <div className="flex gap-2">
+          <BackButton />
+          <Button asChild variant="secondary">
+            <Link href={`/tickets/${ticket.TicketID}/edit`}><Edit className="size-4" />Edit</Link>
+          </Button>
+        </div>
       </div>
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { DashboardCards } from "@/components/dashboard-cards";
+import { DashboardInsights } from "@/components/dashboard-insights";
 import { KPICharts } from "@/components/kpi-charts";
 import { GoogleMapView } from "@/components/google-map-view";
 import { TicketCard } from "@/components/ticket-card";
@@ -8,6 +9,8 @@ import { ActivityTimeline } from "@/components/activity-timeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardMetrics, getTicketsWithRelations } from "@/lib/data";
+
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const metrics = await getDashboardMetrics();
@@ -28,7 +31,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-sky-700">Today&apos;s service operations</p>
+          <p className="text-sm font-medium text-sky-700"></p>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Dashboard</h1>
         </div>
         <Button asChild>
@@ -44,6 +47,13 @@ export default async function DashboardPage() {
         pendingPms={metrics.pendingPms}
         activeEngineers={metrics.activeEngineers}
         critical={metrics.critical}
+        slaPulse={metrics.slaPulse}
+      />
+      <DashboardInsights
+        tickets={metrics.tickets}
+        engineers={metrics.engineers}
+        pmsSchedule={metrics.pmsSchedule}
+        contracts={metrics.contracts}
       />
       <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
         <div className="space-y-4">
