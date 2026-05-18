@@ -1,0 +1,17 @@
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export function SelectNative({
+  className,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      className={cn(
+        "flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-[#00000c] shadow-sm outline-none transition focus:border-[#38b6ff] focus:ring-2 focus:ring-[#38b6ff]/20",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
