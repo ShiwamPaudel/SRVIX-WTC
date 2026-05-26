@@ -1,30 +1,39 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { Edit, Navigation } from "lucide-react";
+import { CalendarCheck, Cpu, Edit, History, Wrench } from "lucide-react";
+import { auth } from "@/auth";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { BackButton } from "@/components/back-button";
-import { GoogleMapView } from "@/components/google-map-view";
-import { SignaturePad } from "@/components/signature-pad";
-import { UploadWidget } from "@/components/upload-widget";
+import { TicketDeleteButton } from "@/components/ticket-delete-button";
+import { TicketReportUpload } from "@/components/ticket-report-upload";
 import { ContractBadge, PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { getTicket } from "@/lib/data";
+import { getServiceDataset, getTicket } from "@/lib/data";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ ticketId: string }> }) {
   const { ticketId } = await params;
+  const session = await auth();
   const ticket = await getTicket(ticketId);
   if (!ticket) notFound();
 
-  const point = ticket.Latitude && ticket.Longitude ? [{
-    id: ticket.TicketID,
-    title: ticket.customer?.HospitalName ?? "Customer not linked",
-    subtitle: ticket.TicketTitle,
-    latitude: Number(ticket.Latitude),
-    longitude: Number(ticket.Longitude),
-    status: ticket.TicketStatus,
-  }] : [];
+  const { pmsSchedule, tickets } = await getServiceDataset();
+  const machineId = ticket.machine?.MachineID || ticket.MachineID || ticket.InstallationID || "";
+  const relatedPms = pmsSchedule
+    .filter((pms) => pms.MachineID === machineId || pms.MachineID === ticket.MachineID || pms.MachineID === ticket.InstallationID)
+    .sort((a, b) => (a.DueDate || "").localeCompare(b.DueDate || ""));
+  const today = new Date().toISOString().slice(0, 10);
+  const completedPms = relatedPms
+    .filter((pms) => pms.Status === "Completed" || pms.CompletionDate)
+    .sort((a, b) => (b.CompletionDate || b.DueDate || "").localeCompare(a.CompletionDate || a.DueDate || ""));
+  const upcomingPms = relatedPms.find((pms) => pms.Status !== "Completed" && (!pms.DueDate || pms.DueDate >= today)) ??
+    relatedPms.find((pms) => pms.Status !== "Completed");
+  const machineTickets = tickets
+    .filter((item) => (item.MachineID || item.InstallationID) === machineId && item.TicketID !== ticket.TicketID)
+    .sort((a, b) => (b.TicketDate || b.Date || "").localeCompare(a.TicketDate || a.Date || ""));
+  const openMachineTickets = machineTickets.filter((item) => item.TicketStatus !== "Closed");
 
   return (
     <div className="space-y-5">
@@ -43,6 +52,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
           <Button asChild variant="secondary">
             <Link href={`/tickets/${ticket.TicketID}/edit`}><Edit className="size-4" />Edit</Link>
           </Button>
+          {session?.user.role === "Admin" ? <TicketDeleteButton ticketId={ticket.TicketID} /> : null}
         </div>
       </div>
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
@@ -71,25 +81,107 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
             <CardHeader><CardTitle>Service Logs</CardTitle></CardHeader>
             <CardContent><ActivityTimeline logs={ticket.logs ?? []} /></CardContent>
           </Card>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <UploadWidget />
-            <SignaturePad />
-          </div>
+          <TicketReportUpload
+            ticketId={ticket.TicketID}
+            attachmentUrls={ticket.AttachmentURLs}
+            canRemove={session?.user.role === "Admin" || session?.user.role === "Manager"}
+          />
         </div>
         <div className="space-y-4">
-          <GoogleMapView points={point} height={320} />
-          <Card>
-            <CardHeader><CardTitle>Directions</CardTitle></CardHeader>
-            <CardContent>
-              <Button asChild className="w-full">
-                <a href={`https://www.google.com/maps/dir/?api=1&destination=${ticket.Latitude},${ticket.Longitude}`} target="_blank" rel="noreferrer">
-                  <Navigation className="size-4" />Open route
-                </a>
-              </Button>
-            </CardContent>
-          </Card>
+          <MachineDetails
+            machineName={`${ticket.machine?.DeviceName ?? "Machine not linked"} ${ticket.machine?.Model ?? ""}`.trim()}
+            serialNumber={ticket.machine?.SerialNumber}
+            contractType={ticket.machine?.ContractType || ticket.ContractType}
+            warrantyExpiry={ticket.machine?.WarrantyExpiry}
+            lastPms={completedPms[0]?.CompletionDate || completedPms[0]?.DueDate || ticket.machine?.LastPMS}
+            nextPms={upcomingPms?.DueDate || ticket.machine?.NextPMS}
+            upcomingPmsStatus={upcomingPms?.Status}
+            openTicketCount={openMachineTickets.length}
+            recentTickets={machineTickets.slice(0, 3)}
+          />
         </div>
       </div>
+    </div>
+  );
+}
+
+function MachineDetails({
+  machineName,
+  serialNumber,
+  contractType,
+  warrantyExpiry,
+  lastPms,
+  nextPms,
+  upcomingPmsStatus,
+  openTicketCount,
+  recentTickets,
+}: {
+  machineName: string;
+  serialNumber?: string;
+  contractType?: string;
+  warrantyExpiry?: string;
+  lastPms?: string;
+  nextPms?: string;
+  upcomingPmsStatus?: string;
+  openTicketCount: number;
+  recentTickets: { TicketID: string; TicketTitle: string; TicketStatus: string; TicketDate: string; Date?: string }[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Machine Details</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-md bg-slate-50 p-3">
+          <div className="flex items-start gap-3">
+            <Cpu className="mt-0.5 size-5 text-sky-600" />
+            <div>
+              <p className="font-semibold text-slate-950">{machineName || "Machine not linked"}</p>
+              <p className="text-sm text-slate-500">Serial {serialNumber || "not set"}</p>
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-3 text-sm">
+          <Insight icon={<Wrench className="size-4" />} label="Contract" value={contractType || "Not set"} />
+          <Insight icon={<CalendarCheck className="size-4" />} label="Warranty expiry" value={formatDate(warrantyExpiry)} />
+          <Insight icon={<History className="size-4" />} label="Previous PMS" value={formatDate(lastPms)} />
+          <Insight
+            icon={<CalendarCheck className="size-4" />}
+            label="Next PMS"
+            value={`${formatDate(nextPms)}${upcomingPmsStatus ? ` - ${upcomingPmsStatus}` : ""}`}
+          />
+        </div>
+        <div className="rounded-md border border-slate-200 p-3">
+          <p className="text-sm font-semibold text-slate-950">{openTicketCount} open tickets on this machine</p>
+          <div className="mt-3 space-y-2">
+            {recentTickets.map((item) => (
+              <Link
+                key={item.TicketID}
+                href={`/tickets/${item.TicketID}`}
+                className="block rounded-md bg-slate-50 px-3 py-2 text-sm transition hover:bg-sky-50"
+              >
+                <span className="font-medium text-slate-900">{item.TicketTitle}</span>
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {item.TicketStatus} - {formatDate(item.TicketDate || item.Date)}
+                </span>
+              </Link>
+            ))}
+            {!recentTickets.length ? <p className="text-sm text-slate-500">No previous ticket history for this machine.</p> : null}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Insight({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2">
+      <span className="flex items-center gap-2 text-slate-500">
+        {icon}
+        {label}
+      </span>
+      <span className="text-right font-medium text-slate-950">{value}</span>
     </div>
   );
 }

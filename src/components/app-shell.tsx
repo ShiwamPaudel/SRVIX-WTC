@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import { auth, signOut } from "@/auth";
 import {
-  Activity,
+  ClipboardCheck,
   CalendarCheck,
   Cpu,
   FileText,
@@ -21,8 +21,8 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tickets", label: "Tickets", icon: Ticket },
   { href: "/machines", label: "Machines", icon: Cpu },
+  { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
   { href: "/contracts", label: "Contracts", icon: FileText },
-  { href: "/engineer", label: "Engineer Panel", icon: Activity },
   { href: "/engineers", label: "Engineers", icon: Users },
   { href: "/pms", label: "PMS", icon: CalendarCheck },
   { href: "/maps", label: "Live Map", icon: MapPinned },

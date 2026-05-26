@@ -22,6 +22,7 @@ type LeafletMap = {
 type LeafletLayer = {
   addTo: (map: LeafletMap) => LeafletLayer;
   bindPopup?: (content: string) => LeafletLayer;
+  bindTooltip?: (content: string, options?: Record<string, unknown>) => LeafletLayer;
 };
 
 type LeafletRuntime = {
@@ -41,6 +42,11 @@ const leafletCssId = "leaflet-css";
 const leafletScriptId = "leaflet-script";
 const leafletCssUrl = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
 const leafletScriptUrl = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+const nepalCenter: [number, number] = [28.3949, 84.1240];
+const nepalBounds: [number, number][] = [
+  [26.347, 80.058],
+  [30.447, 88.201],
+];
 
 function markerColor(status?: string) {
   if (status === "Critical" || status === "Pending") return "#e11d48";
@@ -100,7 +106,7 @@ export function GoogleMapView({ points, height = 420 }: { points: MapPoint[]; he
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (!mapRef.current || !points.length) return;
+    if (!mapRef.current) return;
 
     let map: LeafletMap | undefined;
     let cancelled = false;
@@ -111,6 +117,8 @@ export function GoogleMapView({ points, height = 420 }: { points: MapPoint[]; he
       .then((leaflet) => {
         if (!mapRef.current || cancelled) return;
         map = leaflet.map(mapRef.current, {
+          center: nepalCenter,
+          zoom: 7,
           zoomControl: true,
           scrollWheelZoom: true,
         });
@@ -126,16 +134,25 @@ export function GoogleMapView({ points, height = 420 }: { points: MapPoint[]; he
             point.subtitle ? escapeHtml(point.subtitle) : "",
             point.description ? escapeHtml(point.description) : "",
           ].filter(Boolean);
-          leaflet.circleMarker([point.latitude, point.longitude], {
+          const marker = leaflet.circleMarker([point.latitude, point.longitude], {
             radius: point.kind === "Engineer" ? 9 : 7,
             color: "#ffffff",
             weight: 2,
             fillColor: markerColor(point.status),
             fillOpacity: 0.95,
-          }).addTo(map as LeafletMap).bindPopup?.(lines.join("<br/>"));
+          }).addTo(map as LeafletMap);
+          marker.bindPopup?.(lines.join("<br/>"));
+          marker.bindTooltip?.(escapeHtml(point.title), {
+            permanent: true,
+            direction: "top",
+            offset: [0, -10],
+            className: "srvix-map-label",
+          });
         });
 
-        if (latLngs.length === 1) {
+        if (!latLngs.length) {
+          map.fitBounds(leaflet.latLngBounds(nepalBounds), { padding: [24, 24] });
+        } else if (latLngs.length === 1) {
           map.fitBounds(leaflet.latLngBounds(latLngs), { maxZoom: 14, padding: [48, 48] });
         } else {
           map.fitBounds(leaflet.latLngBounds(latLngs), { maxZoom: 13, padding: [48, 48] });
@@ -152,7 +169,7 @@ export function GoogleMapView({ points, height = 420 }: { points: MapPoint[]; he
     };
   }, [points]);
 
-  if (!points.length || failed) {
+  if (failed) {
     return (
       <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
         <div className="grid place-items-center bg-slate-100 p-6" style={{ height }}>

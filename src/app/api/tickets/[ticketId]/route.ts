@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ti
   const body = (await request.json()) as Partial<Ticket>;
   const normalizedPatch = {
     ...body,
-    TicketStatus: body.TicketStatus === "Closed" ? "Closed" : "Pending",
+    ...(body.TicketStatus ? { TicketStatus: body.TicketStatus === "Closed" ? "Closed" : "Pending" } : {}),
   } satisfies Partial<Ticket>;
   const ticket = await dataService.updateTicket(ticketId, normalizedPatch);
   if (ticket.PMSID && ticket.TicketStatus === "Closed") {
@@ -48,4 +48,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ti
   });
 
   return NextResponse.json({ ticket });
+}
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ ticketId: string }> }) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "Admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { ticketId } = await params;
+  const ticket = await getTicket(ticketId);
+  if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  await dataService.deleteTicket(ticketId);
+  return NextResponse.json({ ok: true });
 }

@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { Building2, CalendarCheck, Cpu, ImageIcon, MapPin, Plus, Search, Ticket, X } from "lucide-react";
+import { Building2, CalendarCheck, Cpu, ImageIcon, MapPin, Plus, X } from "lucide-react";
 import { auth } from "@/auth";
+import { FilterField, FilterSummary, FilterToolbar, filterInputClass, filterSelectClass } from "@/components/filter-toolbar";
+import { LiveFilterForm } from "@/components/live-filter-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,12 +51,13 @@ function MachinePhoto({ machine }: { machine: Machine }) {
 export default async function MachinesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; customer?: string }>;
+  searchParams: Promise<{ q?: string; customer?: string; status?: string }>;
 }) {
   const params = await searchParams;
   const session = await auth();
   const query = (params.q ?? "").trim().toLowerCase();
   const selectedCustomer = params.customer ?? "";
+  const selectedStatus = params.status ?? "";
   const { customers, machines, tickets } = await getServiceDataset();
 
   const rows: MachineWithContext[] = machines.map((machine) => {
@@ -92,7 +95,8 @@ export default async function MachinesPage({
 
     const matchesQuery = query ? searchText.includes(query) : true;
     const matchesCustomer = selectedCustomer ? machine.CustomerID === selectedCustomer : true;
-    return matchesQuery && matchesCustomer;
+    const matchesStatus = selectedStatus ? machine.Status === selectedStatus : true;
+    return matchesQuery && matchesCustomer && matchesStatus;
   });
 
   const grouped = customers
@@ -103,6 +107,8 @@ export default async function MachinesPage({
     .filter((group) => group.machines.length);
 
   const openTicketCount = filtered.reduce((total, machine) => total + machine.openTickets.length, 0);
+  const statuses = Array.from(new Set(rows.map((machine) => machine.Status).filter(Boolean))).sort();
+  const activeFilterCount = [params.q, params.customer, params.status].filter(Boolean).length;
 
   return (
     <div className="space-y-5">
@@ -120,12 +126,6 @@ export default async function MachinesPage({
               New customer
             </Link>
           </Button>
-          <Button asChild variant="secondary">
-            <Link href="/machines/new">
-              <Plus className="size-4" />
-              New installation
-            </Link>
-          </Button>
           {session?.user.role === "Admin" ? (
             <Button asChild variant="secondary">
               <Link href="/device-models/new">
@@ -135,40 +135,59 @@ export default async function MachinesPage({
             </Button>
           ) : null}
           <Button asChild>
-            <Link href="/tickets/new">
-              <Ticket className="size-4" />
-              New ticket
+            <Link href="/machines/new">
+              <Plus className="size-4" />
+              New installation
             </Link>
           </Button>
         </div>
       </div>
 
-      <form className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_280px_auto_auto]">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            className="pl-9"
-            name="q"
-            placeholder="Search institution, device, model, serial..."
-            defaultValue={params.q ?? ""}
-          />
-        </div>
-        <SelectNative name="customer" defaultValue={selectedCustomer}>
-          <option value="">All institutions</option>
-          {customers.map((customer) => (
-            <option key={customer.CustomerID} value={customer.CustomerID}>
-              {customer.HospitalName}
-            </option>
-          ))}
-        </SelectNative>
-        <Button variant="secondary">Apply</Button>
-        <Button asChild variant="ghost">
-          <Link href="/machines">
-            <X className="size-4" />
-            Clear
-          </Link>
-        </Button>
-      </form>
+      <LiveFilterForm>
+        <FilterToolbar
+          summary={
+            <>
+              <FilterSummary>{filtered.length} of {rows.length} matched</FilterSummary>
+              {activeFilterCount ? <FilterSummary>{activeFilterCount} active</FilterSummary> : null}
+            </>
+          }
+          actions={
+            <Button asChild variant="ghost">
+              <Link href="/machines">
+                <X className="size-4" />
+                Clear
+              </Link>
+            </Button>
+          }
+        >
+          <FilterField label="Search" className="min-w-72 flex-1">
+            <Input
+              className={filterInputClass}
+              name="q"
+              placeholder="Institution, device, model, serial..."
+              defaultValue={params.q ?? ""}
+            />
+          </FilterField>
+          <FilterField label="Institution" className="min-w-72">
+            <SelectNative name="customer" defaultValue={selectedCustomer} className={filterSelectClass}>
+            <option value="">All institutions</option>
+            {customers.map((customer) => (
+              <option key={customer.CustomerID} value={customer.CustomerID}>
+                {customer.HospitalName}
+              </option>
+            ))}
+            </SelectNative>
+          </FilterField>
+          <FilterField label="Status" className="min-w-52">
+            <SelectNative name="status" defaultValue={selectedStatus} className={filterSelectClass}>
+            <option value="">All machine status</option>
+            {statuses.map((status) => (
+              <option key={status}>{status}</option>
+            ))}
+            </SelectNative>
+          </FilterField>
+        </FilterToolbar>
+      </LiveFilterForm>
 
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">

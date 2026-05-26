@@ -248,6 +248,14 @@ async function updateRecord<T>(table: TableName, id: string, patch: DbRecord) {
   return nextRecord;
 }
 
+async function deleteRecord(table: TableName, id: string) {
+  const idColumn = idColumns[table];
+  await turso.execute({
+    sql: `DELETE FROM ${table} WHERE ${quote(idColumn)} = ?`,
+    args: [id],
+  });
+}
+
 function normalizeCustomer(record: Customer) {
   return {
     ...record,
@@ -436,6 +444,17 @@ export const dataService = {
       ...patch,
       LastUpdated: new Date().toISOString(),
     });
+  },
+  async deleteTicket(ticketId: string) {
+    await turso.execute({
+      sql: `UPDATE pms_schedule SET ${quote("TicketID")} = ?, ${quote("Status")} = ? WHERE ${quote("TicketID")} = ?`,
+      args: ["", "Scheduled", ticketId],
+    });
+    await turso.execute({
+      sql: `DELETE FROM ticket_logs WHERE ${quote("TicketID")} = ?`,
+      args: [ticketId],
+    });
+    await deleteRecord("tickets", ticketId);
   },
   async createTicketLog(log: TicketLog) {
     return insertRecord<TicketLog>("ticket_logs", log);

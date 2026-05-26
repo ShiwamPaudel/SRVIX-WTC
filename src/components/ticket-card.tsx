@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, ImageIcon, MapPin, Wrench } from "lucide-react";
+import { Clock, ImageIcon, MapPin, UserRound, Wrench } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ContractBadge, PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { formatDate, minutesAgo } from "@/lib/utils";
@@ -35,10 +35,14 @@ export function TicketCard({ ticket }: { ticket: TicketWithRelations }) {
               <ContractBadge contract={ticket.ContractType} />
             </div>
           </div>
-          <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-3">
+          <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2 xl:grid-cols-4">
             <span className="flex items-center gap-2">
               <MapPin className="size-4 text-slate-400" />
               {ticket.customer?.HospitalName ?? "Customer not linked"}
+            </span>
+            <span className="flex items-center gap-2">
+              <UserRound className="size-4 text-slate-400" />
+              {ticket.engineer?.EngineerName ?? "Engineer not assigned"}
             </span>
             <span className="flex items-center gap-2">
               <Wrench className="size-4 text-slate-400" />

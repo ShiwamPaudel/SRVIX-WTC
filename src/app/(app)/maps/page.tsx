@@ -19,7 +19,7 @@ function locationUpdateLabel(value?: string) {
 
 export default async function MapsPage() {
   const session = await auth();
-  const { customers, engineers, tickets, locationLogs } = await getServiceDataset();
+  const { engineers, locationLogs } = await getServiceDataset();
   const latestLocationByEngineer = locationLogs.reduce<Map<string, EngineerLocationLog>>((latest, log) => {
     const current = latest.get(log.EngineerID);
     const currentTime = current ? new Date(current.CreatedAt).getTime() : 0;
@@ -27,45 +27,30 @@ export default async function MapsPage() {
     if (!current || nextTime >= currentTime) latest.set(log.EngineerID, log);
     return latest;
   }, new Map());
+  const engineerById = new Map(engineers.map((engineer) => [engineer.EngineerID, engineer]));
 
-  const points = [
-    ...customers.map((customer) => ({
-      id: customer.CustomerID,
-      title: customer.NameOfCustomer || customer.HospitalName || "Customer not named",
-      subtitle: `${customer.Department || "Customer site"} - customer`,
-      latitude: Number(customer.Latitude),
-      longitude: Number(customer.Longitude),
-      status: "Customer",
-    })),
-    ...engineers.map((engineer) => {
-      const latestLocation = latestLocationByEngineer.get(engineer.EngineerID);
+  const points = Array.from(latestLocationByEngineer.values())
+    .map((location) => {
+      const engineer = engineerById.get(location.EngineerID);
       return {
-        id: engineer.EngineerID,
-        title: engineer.EngineerName,
-        subtitle: locationUpdateLabel(engineer.LastLocationUpdate),
-        description: latestLocation?.Remarks || "No remarks added",
-        latitude: Number(engineer.LiveLatitude),
-        longitude: Number(engineer.LiveLongitude),
-        status: engineer.ActiveStatus,
+        id: location.EngineerID,
+        title: location.EngineerName || engineer?.EngineerName || "Engineer",
+        subtitle: locationUpdateLabel(location.CreatedAt),
+        description: location.Remarks || "No remarks added",
+        latitude: Number(location.Latitude),
+        longitude: Number(location.Longitude),
+        status: engineer?.ActiveStatus,
         kind: "Engineer",
       };
-    }),
-    ...tickets.map((ticket) => ({
-      id: ticket.TicketID,
-      title: ticket.TicketTitle,
-      subtitle: `${ticket.TicketStatus} - ticket`,
-      latitude: Number(ticket.Latitude),
-      longitude: Number(ticket.Longitude),
-      status: ticket.TicketStatus,
-    })),
-  ].filter((point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude));
+    })
+    .filter((point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude));
 
   return (
     <div className="space-y-5">
       <MapAutoRefresh />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Live Map</h1>
-        <p className="text-sm text-slate-500">Customer sites, ticket locations, and live engineer check-ins.</p>
+        <p className="text-sm text-slate-500">Latest locations submitted by engineers.</p>
       </div>
       {session?.user.engineerId ? (
         <Card>
@@ -76,7 +61,7 @@ export default async function MapsPage() {
         </Card>
       ) : null}
       <Card>
-        <CardHeader><CardTitle>Operational Map</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Engineer Location Map</CardTitle></CardHeader>
         <CardContent><GoogleMapView points={points} height={620} /></CardContent>
       </Card>
       <Card>
