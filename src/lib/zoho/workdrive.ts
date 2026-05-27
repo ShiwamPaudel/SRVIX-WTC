@@ -158,7 +158,12 @@ async function zohoAccessToken() {
     body: params,
   });
   const data = (await response.json()) as { access_token?: string; expires_in?: number; error?: string; error_description?: string };
-  if (!response.ok || !data.access_token) throw new Error(data.error_description || data.error || "Zoho token request failed");
+  if (!response.ok || !data.access_token) {
+    if (data.error === "invalid_code") {
+      throw new Error("Zoho WorkDrive refresh token is invalid or revoked. Generate a new refresh token for the configured Zoho data center.");
+    }
+    throw new Error(data.error_description || data.error || "Zoho token request failed");
+  }
   cachedAccessToken = {
     token: data.access_token,
     expiresAt: Date.now() + Math.max(60, data.expires_in ?? 3600) * 1000,

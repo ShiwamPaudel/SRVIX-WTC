@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectNative } from "@/components/ui/select";
-import { getServiceDataset } from "@/lib/data";
+import { isAdmin } from "@/lib/permissions";
+import { dataService } from "@/lib/turso/service";
 import type { Machine, Ticket as ServiceTicket } from "@/types/service";
 
 type MachineWithContext = Machine & {
@@ -55,14 +56,29 @@ export default async function MachinesPage({
 }) {
   const params = await searchParams;
   const session = await auth();
+  const userIsAdmin = isAdmin(session?.user.role);
   const query = (params.q ?? "").trim().toLowerCase();
   const selectedCustomer = params.customer ?? "";
   const selectedStatus = params.status ?? "";
-  const { customers, machines, tickets } = await getServiceDataset();
+  const [customers, machines, tickets] = await Promise.all([
+    dataService.customers(),
+    dataService.machines(),
+    dataService.tickets(),
+  ]);
+  const customerById = new Map(customers.map((customer) => [customer.CustomerID, customer]));
+  const ticketsByMachine = tickets.reduce<Map<string, ServiceTicket[]>>((grouped, ticket) => {
+    const keys = new Set([ticket.MachineID, ticket.InstallationID].filter((key): key is string => Boolean(key)));
+    for (const key of keys) {
+      const group = grouped.get(key) ?? [];
+      group.push(ticket);
+      grouped.set(key, group);
+    }
+    return grouped;
+  }, new Map());
 
   const rows: MachineWithContext[] = machines.map((machine) => {
-    const customer = customers.find((item) => item.CustomerID === machine.CustomerID);
-    const machineTickets = tickets.filter((ticket) => ticket.MachineID === machine.MachineID);
+    const customer = customerById.get(machine.CustomerID);
+    const machineTickets = ticketsByMachine.get(machine.MachineID) ?? [];
 
     return {
       ...machine,
@@ -99,10 +115,16 @@ export default async function MachinesPage({
     return matchesQuery && matchesCustomer && matchesStatus;
   });
 
+  const filteredByCustomer = filtered.reduce<Map<string, MachineWithContext[]>>((grouped, machine) => {
+    const group = grouped.get(machine.CustomerID) ?? [];
+    group.push(machine);
+    grouped.set(machine.CustomerID, group);
+    return grouped;
+  }, new Map());
   const grouped = customers
     .map((customer) => ({
       customer,
-      machines: filtered.filter((machine) => machine.CustomerID === customer.CustomerID),
+      machines: filteredByCustomer.get(customer.CustomerID) ?? [],
     }))
     .filter((group) => group.machines.length);
 
@@ -119,28 +141,28 @@ export default async function MachinesPage({
             Lookup installed equipment by institution, device, model, serial number, contract, and ticket history.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="secondary">
-            <Link href="/customers/new">
-              <Building2 className="size-4" />
-              New customer
-            </Link>
-          </Button>
-          {session?.user.role === "Admin" ? (
+        {userIsAdmin ? (
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary">
+              <Link href="/customers/new">
+                <Building2 className="size-4" />
+                New customer
+              </Link>
+            </Button>
             <Button asChild variant="secondary">
               <Link href="/device-models/new">
                 <Cpu className="size-4" />
                 New model
               </Link>
             </Button>
-          ) : null}
-          <Button asChild>
-            <Link href="/machines/new">
-              <Plus className="size-4" />
-              New installation
-            </Link>
-          </Button>
-        </div>
+            <Button asChild>
+              <Link href="/machines/new">
+                <Plus className="size-4" />
+                New installation
+              </Link>
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <LiveFilterForm>

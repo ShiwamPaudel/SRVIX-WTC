@@ -12,6 +12,7 @@ import type {
   Machine,
   NotificationRecord,
   PMSSchedule,
+  PushSubscriptionRecord,
   Ticket,
   TicketStatus,
   TicketLog,
@@ -28,7 +29,8 @@ type TableName =
   | "ticket_logs"
   | "pms_schedule"
   | "users"
-  | "notifications";
+  | "notifications"
+  | "push_subscriptions";
 
 type DbRecord = Record<string, unknown>;
 
@@ -168,6 +170,18 @@ const columns = {
     "CreatedAt",
     "SentAt",
   ],
+  push_subscriptions: [
+    "SubscriptionID",
+    "UserID",
+    "EngineerID",
+    "Role",
+    "Endpoint",
+    "P256DH",
+    "AuthSecret",
+    "UserAgent",
+    "CreatedAt",
+    "LastSeenAt",
+  ],
 } satisfies Record<TableName, string[]>;
 
 const idColumns = {
@@ -182,6 +196,7 @@ const idColumns = {
   pms_schedule: "PMSID",
   users: "UserID",
   notifications: "NotificationID",
+  push_subscriptions: "SubscriptionID",
 } satisfies Record<TableName, string>;
 
 function quote(identifier: string) {
@@ -215,6 +230,14 @@ async function readById<T>(table: TableName, id: string) {
   });
   const row = result.rows[0];
   return row ? (rowToRecord(table, row as DbRecord) as T) : undefined;
+}
+
+async function readWhere<T>(table: TableName, column: string, value: string, orderBy?: string) {
+  const sql = `SELECT ${tableColumns(table).map(quote).join(", ")} FROM ${table} WHERE ${quote(column)} = ?${
+    orderBy ? ` ORDER BY ${quote(orderBy)}` : ""
+  }`;
+  const result = await turso.execute({ sql, args: [value] });
+  return result.rows.map((row) => rowToRecord(table, row as DbRecord)) as T[];
 }
 
 async function insertRecord<T>(table: TableName, record: DbRecord) {
@@ -370,6 +393,10 @@ export const dataService = {
     const rows = await readTable<Ticket>("tickets", "LastUpdated");
     return rows.map((row) => normalizeTicket(row));
   },
+  async ticket(ticketId: string) {
+    const row = await readById<Ticket>("tickets", ticketId);
+    return row ? normalizeTicket(row) : undefined;
+  },
   async engineers() {
     const rows = await readTable<Engineer>("engineers", "EngineerName");
     return rows.map((row) => normalizeEngineer(row));
@@ -380,6 +407,9 @@ export const dataService = {
   async ticketLogs() {
     return readTable<TicketLog>("ticket_logs", "UpdateDate");
   },
+  async ticketLogsForTicket(ticketId: string) {
+    return readWhere<TicketLog>("ticket_logs", "TicketID", ticketId, "UpdateDate");
+  },
   async pmsSchedule() {
     return readTable<PMSSchedule>("pms_schedule", "DueDate");
   },
@@ -388,6 +418,18 @@ export const dataService = {
   },
   async notifications() {
     return readTable<NotificationRecord>("notifications", "CreatedAt");
+  },
+  async pushSubscriptions() {
+    return readTable<PushSubscriptionRecord>("push_subscriptions", "LastSeenAt");
+  },
+  async pushSubscriptionsForUser(userId: string) {
+    return readWhere<PushSubscriptionRecord>("push_subscriptions", "UserID", userId, "LastSeenAt");
+  },
+  async pushSubscriptionsForEngineer(engineerId: string) {
+    return readWhere<PushSubscriptionRecord>("push_subscriptions", "EngineerID", engineerId, "LastSeenAt");
+  },
+  async pushSubscriptionsForRole(role: string) {
+    return readWhere<PushSubscriptionRecord>("push_subscriptions", "Role", role, "LastSeenAt");
   },
   async createTicket(ticket: Ticket) {
     return insertRecord<Ticket>("tickets", ticket);
@@ -471,5 +513,32 @@ export const dataService = {
   },
   async createNotification(notification: NotificationRecord) {
     return insertRecord<NotificationRecord>("notifications", notification);
+  },
+  async upsertPushSubscription(subscription: PushSubscriptionRecord) {
+    const existing = await turso.execute({
+      sql: `SELECT ${quote("SubscriptionID")} FROM push_subscriptions WHERE ${quote("Endpoint")} = ? LIMIT 1`,
+      args: [subscription.Endpoint],
+    });
+    const existingId = existing.rows[0]?.SubscriptionID ? String(existing.rows[0].SubscriptionID) : "";
+
+    if (existingId) {
+      return updateRecord<PushSubscriptionRecord>("push_subscriptions", existingId, {
+        UserID: subscription.UserID,
+        EngineerID: subscription.EngineerID,
+        Role: subscription.Role,
+        P256DH: subscription.P256DH,
+        AuthSecret: subscription.AuthSecret,
+        UserAgent: subscription.UserAgent,
+        LastSeenAt: subscription.LastSeenAt,
+      });
+    }
+
+    return insertRecord<PushSubscriptionRecord>("push_subscriptions", subscription);
+  },
+  async deletePushSubscription(endpoint: string) {
+    await turso.execute({
+      sql: `DELETE FROM push_subscriptions WHERE ${quote("Endpoint")} = ?`,
+      args: [endpoint],
+    });
   },
 };

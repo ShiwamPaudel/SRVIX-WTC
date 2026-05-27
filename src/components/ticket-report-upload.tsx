@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { UploadWidget } from "@/components/upload-widget";
 
@@ -19,6 +20,8 @@ export function TicketReportUpload({
   attachmentUrls?: string;
   canRemove?: boolean;
 }) {
+  const router = useRouter();
+
   async function saveAttachments(urls: string[]) {
     const response = await fetch(`/api/tickets/${ticketId}`, {
       method: "PATCH",
@@ -32,15 +35,17 @@ export function TicketReportUpload({
     }
 
     toast.success("Service report attached");
+    router.refresh();
   }
 
   return (
     <UploadWidget
       initialUrls={splitUrls(attachmentUrls)}
       title="Attach Service Report"
-      description="Capture a report photo or upload images and PDF files."
+      description="PDFs and images are accepted. Each file must be less than 2 MB."
       buttonLabel="Capture / Upload report"
       accept="image/*,application/pdf"
+      maxFileSizeMB={2}
       uploadContext={{ ticketId }}
       canRemove={canRemove}
       onUploaded={saveAttachments}

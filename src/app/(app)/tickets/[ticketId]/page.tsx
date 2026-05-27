@@ -11,7 +11,8 @@ import { ContractBadge, PriorityBadge, StatusBadge } from "@/components/status-b
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { getServiceDataset, getTicket } from "@/lib/data";
+import { getTicket } from "@/lib/data";
+import { dataService } from "@/lib/turso/service";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ ticketId: string }> }) {
   const { ticketId } = await params;
@@ -19,7 +20,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
   const ticket = await getTicket(ticketId);
   if (!ticket) notFound();
 
-  const { pmsSchedule, tickets } = await getServiceDataset();
+  const [pmsSchedule, tickets] = await Promise.all([dataService.pmsSchedule(), dataService.tickets()]);
   const machineId = ticket.machine?.MachineID || ticket.MachineID || ticket.InstallationID || "";
   const relatedPms = pmsSchedule
     .filter((pms) => pms.MachineID === machineId || pms.MachineID === ticket.MachineID || pms.MachineID === ticket.InstallationID)

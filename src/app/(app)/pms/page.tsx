@@ -1,10 +1,18 @@
-import { AlertTriangle, CalendarCheck, CalendarClock, CheckCircle2, Clock3, Wrench } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { AlertTriangle, CalendarCheck, CalendarClock, CheckCircle2, Clock3, X, Wrench } from "lucide-react";
+import { auth } from "@/auth";
+import { FilterField, FilterSummary, FilterToolbar, filterInputClass } from "@/components/filter-toolbar";
+import { LiveFilterForm } from "@/components/live-filter-form";
 import { PMSCreateTicketButton } from "@/components/pms-create-ticket-button";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/utils";
-import { getServiceDataset } from "@/lib/data";
+import { isAdmin } from "@/lib/permissions";
+import { dataService } from "@/lib/turso/service";
 import type { PMSSchedule, Ticket } from "@/types/service";
 
 type PMSRow = PMSSchedule & {
@@ -50,19 +58,41 @@ function dueLabel(row: PMSRow, today: Date) {
   return `In ${days} days`;
 }
 
-export default async function PMSPage() {
-  const { pmsSchedule, machines, customers, engineers, tickets } = await getServiceDataset();
+export default async function PMSPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const session = await auth();
+  if (!isAdmin(session?.user.role)) redirect("/dashboard");
+
+  const params = await searchParams;
+  const query = (params.q ?? "").trim().toLowerCase();
+  const [pmsSchedule, machines, customers, engineers, tickets] = await Promise.all([
+    dataService.pmsSchedule(),
+    dataService.machines(),
+    dataService.customers(),
+    dataService.engineers(),
+    dataService.tickets(),
+  ]);
+  const machineById = new Map(
+    machines.flatMap((machine) =>
+      [machine.MachineID, machine.InstallationID].filter(Boolean).map((id) => [id, machine] as const),
+    ),
+  );
+  const customerById = new Map(customers.map((customer) => [customer.CustomerID, customer]));
+  const engineerById = new Map(engineers.map((engineer) => [engineer.EngineerID, engineer]));
+  const ticketById = new Map(tickets.map((ticket) => [ticket.TicketID, ticket]));
+  const ticketByPmsId = new Map(tickets.filter((ticket) => ticket.PMSID).map((ticket) => [ticket.PMSID, ticket]));
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const rows: PMSRow[] = pmsSchedule
     .map((pms) => {
-      const machine = machines.find((item) => item.MachineID === pms.MachineID);
-      const customer = customers.find((item) => item.CustomerID === pms.CustomerID);
-      const engineer = engineers.find((item) => item.EngineerID === pms.AssignedEngineer);
-      const ticket = pms.TicketID
-        ? tickets.find((item) => item.TicketID === pms.TicketID)
-        : tickets.find((item) => item.PMSID === pms.PMSID);
+      const machine = machineById.get(pms.MachineID);
+      const customer = customerById.get(pms.CustomerID);
+      const engineer = engineerById.get(pms.AssignedEngineer);
+      const ticket = pms.TicketID ? ticketById.get(pms.TicketID) : ticketByPmsId.get(pms.PMSID);
       const isCompleted = pms.Status === "Completed" || ticket?.TicketStatus === "Closed";
 
       return {
@@ -88,18 +118,43 @@ export default async function PMSPage() {
     pmsCounters.set(row.MachineID, next);
     if (!row.pmsNumber) row.pmsNumber = String(next);
   }
+  const rowsByMachine = rows.reduce<Map<string, PMSRow[]>>((grouped, row) => {
+    const group = grouped.get(row.MachineID) ?? [];
+    group.push(row);
+    grouped.set(row.MachineID, group);
+    return grouped;
+  }, new Map());
+  const filteredRows = query
+    ? rows.filter((row) =>
+        [
+          row.customerName,
+          row.machineName,
+          row.machineModel,
+          row.machineSerial,
+          row.department,
+          row.PMSID,
+          row.pmsNumber,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query),
+      )
+    : rows;
+  const filteredRowKeys = new Set(filteredRows.map((row) => row.PMSID));
 
-  const activeRows = rows.filter((row) => !row.isCompleted);
+  const activeRows = filteredRows.filter((row) => !row.isCompleted);
   const overdue = activeRows.filter((row) => row.due < today);
   const thisMonth = activeRows.filter((row) => sameMonth(row.due, today));
   const upcoming = activeRows.filter((row) => row.due >= today).slice(0, 8);
-  const completedThisMonth = rows.filter((row) => row.isCompleted && sameMonth(row.due, today));
+  const completedThisMonth = filteredRows.filter((row) => row.isCompleted && sameMonth(row.due, today));
 
   const plans = machines
     .map((machine) => {
-      const machineRows = rows.filter((row) => row.MachineID === machine.MachineID);
+      const machineRows = (rowsByMachine.get(machine.MachineID) ?? rowsByMachine.get(machine.InstallationID ?? "") ?? []).filter((row) =>
+        filteredRowKeys.has(row.PMSID),
+      );
       const nextRows = machineRows.filter((row) => !row.isCompleted && row.due >= today);
-      const customer = customers.find((item) => item.CustomerID === machine.CustomerID);
+      const customer = customerById.get(machine.CustomerID);
 
       return {
         machine,
@@ -125,6 +180,34 @@ export default async function PMSPage() {
           Monthly PMS workload, overdue alerts, upcoming visits, and machine-level maintenance plans.
         </p>
       </div>
+
+      <LiveFilterForm>
+        <FilterToolbar
+          summary={
+            <>
+              <FilterSummary>{filteredRows.length} of {rows.length} PMS rows</FilterSummary>
+              {query ? <FilterSummary>1 active</FilterSummary> : null}
+            </>
+          }
+          actions={
+            <Button asChild variant="ghost">
+              <Link href="/pms">
+                <X className="size-4" />
+                Clear
+              </Link>
+            </Button>
+          }
+        >
+          <FilterField label="Search" className="min-w-72 flex-1">
+            <Input
+              className={filterInputClass}
+              name="q"
+              placeholder="Customer, device, model, serial..."
+              defaultValue={params.q ?? ""}
+            />
+          </FilterField>
+        </FilterToolbar>
+      </LiveFilterForm>
 
       <div className="grid gap-3 md:grid-cols-4">
         <Metric title="This month" value={thisMonth.length} icon={CalendarCheck} />
@@ -237,7 +320,7 @@ export default async function PMSPage() {
             <CardTitle>Completed PMS</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {rows
+            {filteredRows
               .filter((row) => row.isCompleted)
               .slice(-8)
               .reverse()
@@ -255,7 +338,7 @@ export default async function PMSPage() {
                   <PMSCreateTicketButton pmsId={row.PMSID} ticketId={row.TicketID} />
                 </div>
               ))}
-            {!rows.some((row) => row.isCompleted) ? (
+            {!filteredRows.some((row) => row.isCompleted) ? (
               <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">No completed PMS records yet.</p>
             ) : null}
           </CardContent>
@@ -266,7 +349,7 @@ export default async function PMSPage() {
             <CardTitle>All PMS Ledger</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {rows.slice(0, 12).map((row) => (
+            {filteredRows.slice(0, 12).map((row) => (
               <div key={row.PMSID} className="flex flex-col gap-2 rounded-md border border-slate-200 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-slate-950">
@@ -280,7 +363,7 @@ export default async function PMSPage() {
                 </div>
               </div>
             ))}
-            {!rows.length ? <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">No PMS records found.</p> : null}
+            {!filteredRows.length ? <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">No PMS records found.</p> : null}
           </CardContent>
         </Card>
       </div>

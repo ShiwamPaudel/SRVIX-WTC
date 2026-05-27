@@ -1,7 +1,7 @@
 import { AttendanceReport } from "@/components/attendance-report";
 import { MapAutoRefresh } from "@/components/map-auto-refresh";
 import { auth } from "@/auth";
-import { getServiceDataset } from "@/lib/data";
+import { dataService } from "@/lib/turso/service";
 import { toDateInputValue } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,12 @@ function dayKey(value?: string) {
 
 export default async function AttendancePage() {
   const session = await auth();
-  const { customers, engineers, tickets, locationLogs } = await getServiceDataset();
+  const [customers, engineers, tickets, locationLogs] = await Promise.all([
+    dataService.customers(),
+    dataService.engineers(),
+    dataService.tickets(),
+    dataService.engineerLocationLogs(),
+  ]);
   const customerById = new Map(customers.map((customer) => [customer.CustomerID, customer]));
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);

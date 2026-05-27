@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { isAdmin } from "@/lib/permissions";
 import { compactId, uniqueCompactId } from "@/lib/utils";
 import { dataService } from "@/lib/turso/service";
 import { sendNotification } from "@/lib/notifications";
+import { notifyEngineerTicketAssigned } from "@/lib/push-notifications";
 import type { Ticket } from "@/types/service";
 
 function warrantyStatus(expiry?: string) {
@@ -20,6 +22,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(session.user.role)) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
   const body = (await request.json()) as Partial<Ticket>;
   const now = new Date().toISOString();
@@ -108,6 +111,7 @@ export async function POST(request: Request) {
         message: `${ticket.TicketID} has been assigned to you.`,
       });
     }
+    await notifyEngineerTicketAssigned(ticket).catch((error) => console.warn("Ticket assignment push failed", error));
   }
 
   return NextResponse.json({ ticket }, { status: 201 });

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { isAdmin } from "@/lib/permissions";
 import { dataService } from "@/lib/turso/service";
 import { uniqueCompactId } from "@/lib/utils";
 import type { AppUser, Engineer } from "@/types/service";
@@ -7,9 +8,7 @@ import type { AppUser, Engineer } from "@/types/service";
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!["Admin", "Manager"].includes(session.user.role ?? "")) {
-    return NextResponse.json({ error: "Admin or manager access required" }, { status: 403 });
-  }
+  if (!isAdmin(session.user.role)) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
   const body = (await request.json()) as Partial<Engineer> & { Password?: string };
   if (!body.EngineerName || !body.Email || !body.Password) {

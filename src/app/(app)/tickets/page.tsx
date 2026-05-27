@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { SelectNative } from "@/components/ui/select";
 import { contractTypes, priorities, serviceTypes, ticketStatuses } from "@/lib/constants";
 import { getTicketsWithRelations } from "@/lib/data";
+import { isAdmin } from "@/lib/permissions";
 import { dataService } from "@/lib/turso/service";
 
 export default async function TicketsPage({
@@ -27,6 +28,7 @@ export default async function TicketsPage({
   }>;
 }) {
   const session = await auth();
+  const userIsAdmin = isAdmin(session?.user.role);
   const params = await searchParams;
   const [tickets, engineers] = await Promise.all([
     getTicketsWithRelations(session?.user.role, session?.user.engineerId),
@@ -76,9 +78,11 @@ export default async function TicketsPage({
           <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Tickets</h1>
           <p className="text-sm text-slate-500">Search, filter, assign, and track complaint resolution.</p>
         </div>
-        <Button asChild>
-          <Link href="/tickets/new"><Plus className="size-4" />New ticket</Link>
-        </Button>
+        {userIsAdmin ? (
+          <Button asChild>
+            <Link href="/tickets/new"><Plus className="size-4" />New ticket</Link>
+          </Button>
+        ) : null}
       </div>
       <LiveFilterForm>
         <FilterToolbar

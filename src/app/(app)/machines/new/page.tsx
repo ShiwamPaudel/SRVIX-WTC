@@ -1,8 +1,8 @@
 import { MachineForm } from "@/components/machine-form";
-import { getServiceDataset } from "@/lib/data";
+import { dataService } from "@/lib/turso/service";
 
 export default async function NewMachinePage() {
-  const { customers, deviceModels } = await getServiceDataset();
+  const [customers, deviceModels] = await Promise.all([dataService.customers(), dataService.deviceModels()]);
 
   return (
     <div className="space-y-5">

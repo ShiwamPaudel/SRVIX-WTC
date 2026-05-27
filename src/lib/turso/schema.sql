@@ -160,6 +160,19 @@ CREATE TABLE IF NOT EXISTS notifications (
   SentAt TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  SubscriptionID TEXT PRIMARY KEY,
+  UserID TEXT NOT NULL DEFAULT '',
+  EngineerID TEXT NOT NULL DEFAULT '',
+  Role TEXT NOT NULL DEFAULT '',
+  Endpoint TEXT NOT NULL UNIQUE,
+  P256DH TEXT NOT NULL DEFAULT '',
+  AuthSecret TEXT NOT NULL DEFAULT '',
+  UserAgent TEXT NOT NULL DEFAULT '',
+  CreatedAt TEXT NOT NULL DEFAULT '',
+  LastSeenAt TEXT NOT NULL DEFAULT ''
+);
+
 CREATE INDEX IF NOT EXISTS idx_installations_customer ON installations (CustomerID);
 CREATE INDEX IF NOT EXISTS idx_installations_model ON installations (ModelID);
 CREATE INDEX IF NOT EXISTS idx_contracts_installation ON contracts (InstallationID);
@@ -176,3 +189,6 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users (Email);
 CREATE INDEX IF NOT EXISTS idx_engineers_email ON engineers (Email);
 CREATE INDEX IF NOT EXISTS idx_engineer_location_logs_engineer ON engineer_location_logs (EngineerID);
 CREATE INDEX IF NOT EXISTS idx_engineer_location_logs_created ON engineer_location_logs (CreatedAt);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions (UserID);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_engineer ON push_subscriptions (EngineerID);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_role ON push_subscriptions (Role);

@@ -41,11 +41,13 @@ export function TicketForm({
   machines,
   engineers,
   ticket,
+  canAssign = true,
 }: {
   customers: Customer[];
   machines: Machine[];
   engineers: Engineer[];
   ticket?: Ticket;
+  canAssign?: boolean;
 }) {
   const router = useRouter();
   const [attachments, setAttachments] = useState(ticket?.AttachmentURLs ?? "");
@@ -78,6 +80,7 @@ export function TicketForm({
     [customerId, machines],
   );
   const selectedMachine = machines.find((machine) => machine.MachineID === machineId);
+  const assignedEngineer = engineers.find((engineer) => engineer.EngineerID === form.watch("AssignedEngineer"));
 
   useEffect(() => {
     if (selectedMachine && customerId && selectedMachine.CustomerID !== customerId) {
@@ -190,7 +193,7 @@ export function TicketForm({
                             active ? "bg-emerald-500 text-white shadow-sm" : "text-emerald-700 hover:bg-emerald-50"
                           }`
                         : `inline-flex h-9 items-center justify-center gap-2 rounded-md text-sm font-semibold transition ${
-                            active ? "bg-amber-400 text-[#00000c] shadow-sm" : "text-amber-700 hover:bg-amber-50"
+                            active ? "bg-amber-400 text-[#12384f] shadow-sm" : "text-amber-700 hover:bg-amber-50"
                           }`
                     }
                   >
@@ -203,12 +206,19 @@ export function TicketForm({
           </div>
           <label className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Assigned engineer</span>
-            <SelectNative {...form.register("AssignedEngineer")}>
-              <option value="">Assign engineer</option>
-              {engineers.map((engineer) => (
-                <option key={engineer.EngineerID} value={engineer.EngineerID}>{engineer.EngineerName}</option>
-              ))}
-            </SelectNative>
+            {canAssign ? (
+              <SelectNative {...form.register("AssignedEngineer")}>
+                <option value="">Assign engineer</option>
+                {engineers.map((engineer) => (
+                  <option key={engineer.EngineerID} value={engineer.EngineerID}>{engineer.EngineerName}</option>
+                ))}
+              </SelectNative>
+            ) : (
+              <>
+                <Input value={assignedEngineer?.EngineerName ?? "Engineer not assigned"} readOnly />
+                <Input type="hidden" {...form.register("AssignedEngineer")} />
+              </>
+            )}
           </label>
           <label className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Assisted by</span>

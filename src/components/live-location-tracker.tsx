@@ -13,8 +13,13 @@ export function LiveLocationTracker({ engineerId }: { engineerId?: string }) {
   const [sending, setSending] = useState(false);
 
   function sendLocation() {
+    const trimmedRemarks = remarks.trim();
     if (!engineerId) {
       toast.error("Engineer profile missing");
+      return;
+    }
+    if (!trimmedRemarks) {
+      toast.error("Remarks are required");
       return;
     }
     if (!("geolocation" in navigator)) {
@@ -32,7 +37,7 @@ export function LiveLocationTracker({ engineerId }: { engineerId?: string }) {
             engineerId,
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            remarks,
+            remarks: trimmedRemarks,
           }),
         });
         setSending(false);
@@ -57,7 +62,9 @@ export function LiveLocationTracker({ engineerId }: { engineerId?: string }) {
       <Textarea
         value={remarks}
         onChange={(event) => setRemarks(event.target.value)}
-        placeholder="Remarks"
+        placeholder="Remarks / description"
+        required
+        aria-label="Remarks / description"
         rows={3}
       />
       <Button type="button" onClick={sendLocation} disabled={sending}>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { dataService } from "@/lib/turso/service";
+import { notifyAdminsLocationSent } from "@/lib/push-notifications";
 import { compactId } from "@/lib/utils";
 
 export async function PATCH(request: Request) {
@@ -11,9 +12,13 @@ export async function PATCH(request: Request) {
   const engineerId = session.user.role === "Engineer" ? session.user.engineerId : body.engineerId;
   const latitude = Number(body.latitude);
   const longitude = Number(body.longitude);
+  const remarks = String(body.remarks ?? "").trim();
 
   if (!engineerId || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
     return NextResponse.json({ error: "Invalid location payload" }, { status: 400 });
+  }
+  if (!remarks) {
+    return NextResponse.json({ error: "Remarks are required" }, { status: 400 });
   }
 
   if (session.user.role === "Engineer" && session.user.engineerId !== engineerId) {
@@ -31,9 +36,10 @@ export async function PATCH(request: Request) {
     EngineerName: engineer.EngineerName,
     Latitude: String(latitude),
     Longitude: String(longitude),
-    Remarks: String(body.remarks ?? "").trim().slice(0, 500),
+    Remarks: remarks.slice(0, 500),
     CreatedAt: engineer.LastLocationUpdate ?? new Date().toISOString(),
   });
+  await notifyAdminsLocationSent(engineer, remarks).catch((error) => console.warn("Location push failed", error));
 
   return NextResponse.json({ engineer });
 }

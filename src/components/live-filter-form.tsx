@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export function LiveFilterForm({
@@ -16,7 +17,14 @@ export function LiveFilterForm({
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const [, startTransition] = useTransition();
+  const searchParams = useSearchParams();
+  const [isWaiting, setIsWaiting] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const busy = isWaiting || isPending;
+
+  useEffect(() => {
+    setIsWaiting(false);
+  }, [pathname, searchParams]);
 
   useEffect(() => {
     const form = formRef.current;
@@ -25,6 +33,7 @@ export function LiveFilterForm({
     let timeout: number | undefined;
     const applyFilters = () => {
       window.clearTimeout(timeout);
+      setIsWaiting(true);
       timeout = window.setTimeout(() => {
         const data = new FormData(form);
         const params = new URLSearchParams();
@@ -32,9 +41,14 @@ export function LiveFilterForm({
           const text = String(value).trim();
           if (text) params.set(key, text);
         });
+        const nextHref = params.size ? `${pathname}?${params.toString()}` : pathname;
+        const currentHref = `${window.location.pathname}${window.location.search}`;
+        if (nextHref === currentHref) {
+          setIsWaiting(false);
+          return;
+        }
         startTransition(() => {
-          router.replace(params.size ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
-          router.refresh();
+          router.replace(nextHref, { scroll: false });
         });
       }, debounceMs);
     };
@@ -49,14 +63,26 @@ export function LiveFilterForm({
   }, [debounceMs, pathname, router]);
 
   return (
-    <form
-      ref={formRef}
-      className={cn(className)}
-      onSubmit={(event) => {
-        event.preventDefault();
-      }}
-    >
-      {children}
-    </form>
+    <div className="space-y-2">
+      <form
+        ref={formRef}
+        className={cn(className)}
+        aria-busy={busy}
+        onSubmit={(event) => {
+          event.preventDefault();
+        }}
+      >
+        {children}
+      </form>
+      {busy ? (
+        <div className="grid gap-2 rounded-md border border-sky-100 bg-white p-3 shadow-sm" role="status" aria-live="polite">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-3 w-24 bg-sky-100" />
+            <Skeleton className="h-3 flex-1 bg-sky-100" />
+          </div>
+          <Skeleton className="h-2 w-full bg-sky-100" />
+        </div>
+      ) : null}
+    </div>
   );
 }

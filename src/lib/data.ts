@@ -1,7 +1,7 @@
 import "server-only";
 
 import { dataService } from "@/lib/turso/service";
-import type { TicketWithRelations, UserRole } from "@/types/service";
+import type { Customer, Engineer, Machine, Ticket, TicketLog, TicketWithRelations, UserRole } from "@/types/service";
 
 export async function getServiceDataset() {
   const [customers, deviceModels, installations, contracts, machines, tickets, engineers, logs, pmsSchedule, notifications, locationLogs] =
@@ -22,30 +22,73 @@ export async function getServiceDataset() {
   return { customers, deviceModels, installations, contracts, machines, tickets, engineers, logs, pmsSchedule, notifications, locationLogs };
 }
 
+export function joinTicketsWithRelations({
+  customers,
+  machines,
+  tickets,
+  engineers,
+  logs,
+}: {
+  customers: Customer[];
+  machines: Machine[];
+  tickets: Ticket[];
+  engineers: Engineer[];
+  logs: TicketLog[];
+}) {
+  const customerById = new Map(customers.map((customer) => [customer.CustomerID, customer]));
+  const customerByName = new Map(
+    customers.flatMap((customer) =>
+      [customer.NameOfCustomer, customer.HospitalName].filter(Boolean).map((name) => [name, customer] as const),
+    ),
+  );
+  const machineById = new Map(
+    machines.flatMap((machine) =>
+      [machine.MachineID, machine.InstallationID].filter(Boolean).map((id) => [id, machine] as const),
+    ),
+  );
+  const engineerById = new Map(engineers.map((engineer) => [engineer.EngineerID, engineer]));
+  const logsByTicket = logs.reduce<Map<string, TicketLog[]>>((grouped, log) => {
+    const group = grouped.get(log.TicketID) ?? [];
+    group.push(log);
+    grouped.set(log.TicketID, group);
+    return grouped;
+  }, new Map());
+
+  return tickets.map<TicketWithRelations>((ticket) => ({
+    ...ticket,
+    customer: customerById.get(ticket.CustomerID) ?? customerByName.get(ticket.NameOfCustomer ?? ""),
+    machine: machineById.get(ticket.MachineID) ?? machineById.get(ticket.InstallationID ?? ""),
+    engineer: engineerById.get(ticket.AssignedEngineer),
+    logs: logsByTicket.get(ticket.TicketID) ?? [],
+  }));
+}
+
 export async function getTicketsWithRelations(role?: UserRole, engineerId?: string) {
-  const { customers, machines, tickets, engineers, logs } = await getServiceDataset();
+  const [customers, machines, tickets, engineers, logs] = await Promise.all([
+    dataService.customers(),
+    dataService.machines(),
+    dataService.tickets(),
+    dataService.engineers(),
+    dataService.ticketLogs(),
+  ]);
   const allowedTickets =
     role === "Engineer" && engineerId
       ? tickets.filter((ticket) => ticket.AssignedEngineer === engineerId)
       : tickets;
 
-  return allowedTickets.map<TicketWithRelations>((ticket) => ({
-    ...ticket,
-    customer: customers.find(
-      (customer) =>
-        customer.CustomerID === ticket.CustomerID ||
-        customer.NameOfCustomer === ticket.NameOfCustomer ||
-        customer.HospitalName === ticket.NameOfCustomer,
-    ),
-    machine: machines.find((machine) => machine.MachineID === ticket.MachineID || machine.InstallationID === ticket.InstallationID),
-    engineer: engineers.find((engineer) => engineer.EngineerID === ticket.AssignedEngineer),
-    logs: logs.filter((log) => log.TicketID === ticket.TicketID),
-  }));
+  return joinTicketsWithRelations({ customers, machines, tickets: allowedTickets, engineers, logs });
 }
 
 export async function getTicket(ticketId: string) {
-  const tickets = await getTicketsWithRelations();
-  return tickets.find((ticket) => ticket.TicketID === ticketId);
+  const [ticket, customers, machines, engineers, logs] = await Promise.all([
+    dataService.ticket(ticketId),
+    dataService.customers(),
+    dataService.machines(),
+    dataService.engineers(),
+    dataService.ticketLogsForTicket(ticketId),
+  ]);
+  if (!ticket) return undefined;
+  return joinTicketsWithRelations({ customers, machines, tickets: [ticket], engineers, logs })[0];
 }
 
 export async function getDashboardMetrics() {

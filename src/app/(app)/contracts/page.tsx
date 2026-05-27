@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AlertTriangle, CalendarClock, CheckCircle2, FilePlus2 } from "lucide-react";
+import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isAdmin } from "@/lib/permissions";
 import { formatDate } from "@/lib/utils";
-import { getServiceDataset } from "@/lib/data";
+import { dataService } from "@/lib/turso/service";
 import type { Machine } from "@/types/service";
 
 type ContractMachine = {
@@ -29,14 +32,27 @@ function daysUntil(date: Date, today: Date) {
 }
 
 export default async function ContractsPage() {
-  const { machines, customers, contracts } = await getServiceDataset();
+  const session = await auth();
+  if (!isAdmin(session?.user.role)) redirect("/dashboard");
+
+  const [machines, customers, contracts] = await Promise.all([
+    dataService.machines(),
+    dataService.customers(),
+    dataService.contracts(),
+  ]);
+  const customerById = new Map(customers.map((customer) => [customer.CustomerID, customer]));
+  const contractsByInstallation = contracts.reduce<Map<string, typeof contracts>>((grouped, contract) => {
+    const group = grouped.get(contract.InstallationID) ?? [];
+    group.push(contract);
+    grouped.set(contract.InstallationID, group);
+    return grouped;
+  }, new Map());
   const today = new Date();
 
   const rows = machines
     .map<ContractMachine | null>((machine) => {
-      const customer = customers.find((item) => item.CustomerID === machine.CustomerID);
-      const machineContracts = contracts
-        .filter((contract) => contract.InstallationID === machine.InstallationID)
+      const customer = customerById.get(machine.CustomerID);
+      const machineContracts = (contractsByInstallation.get(machine.InstallationID ?? "") ?? [])
         .sort((a, b) => new Date(b.ContractEnd).getTime() - new Date(a.ContractEnd).getTime());
       const latestContract = machineContracts[0];
       const expiryValue = latestContract?.ContractEnd || machine.WarrantyExpiry;
@@ -67,7 +83,7 @@ export default async function ContractsPage() {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[#00000c]">Contracts</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-[#12384f]">Contracts</h1>
           <p className="text-sm text-slate-500">Track machines whose warranty or contract has expired, or will expire in the next 30 days.</p>
         </div>
         <Button asChild>

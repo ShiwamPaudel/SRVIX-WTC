@@ -3,7 +3,7 @@ import { GoogleMapView } from "@/components/google-map-view";
 import { LiveLocationTracker } from "@/components/live-location-tracker";
 import { MapAutoRefresh } from "@/components/map-auto-refresh";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getServiceDataset } from "@/lib/data";
+import { dataService } from "@/lib/turso/service";
 import { formatDateTime, minutesAgo } from "@/lib/utils";
 import type { EngineerLocationLog } from "@/types/service";
 
@@ -19,7 +19,7 @@ function locationUpdateLabel(value?: string) {
 
 export default async function MapsPage() {
   const session = await auth();
-  const { engineers, locationLogs } = await getServiceDataset();
+  const [engineers, locationLogs] = await Promise.all([dataService.engineers(), dataService.engineerLocationLogs()]);
   const latestLocationByEngineer = locationLogs.reduce<Map<string, EngineerLocationLog>>((latest, log) => {
     const current = latest.get(log.EngineerID);
     const currentTime = current ? new Date(current.CreatedAt).getTime() : 0;

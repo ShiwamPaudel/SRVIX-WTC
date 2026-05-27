@@ -1,8 +1,8 @@
-const CACHE_NAME = "wtc-service-v1";
-const APP_SHELL = ["/dashboard", "/tickets", "/engineer", "/manifest.webmanifest"];
+const CACHE_NAME = "wtc-service-v2";
+const PRECACHE_URLS = ["/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
   self.skipWaiting();
 });
 
@@ -17,13 +17,71 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/") || event.request.headers.get("RSC") === "1" || url.searchParams.has("_rsc")) return;
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/dashboard"))),
+    );
+    return;
+  }
+
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+    caches.match(event.request).then((cached) => {
+      const fetched = fetch(event.request).then((response) => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
         return response;
-      })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/dashboard"))),
+      });
+      return cached || fetched;
+    }),
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { body: event.data ? event.data.text() : "" };
+  }
+
+  const title = payload.title || "SRVIX";
+  const options = {
+    body: payload.body || "You have a new SRVIX alert.",
+    icon: "/favicon-srvix.png",
+    badge: "/favicon-srvix.png",
+    tag: payload.tag || "srvix-alert",
+    data: {
+      url: payload.url || "/dashboard",
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || "/dashboard", self.location.origin).href;
+
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        const matchingClient = clientList.find((client) => client.url === targetUrl);
+        if (matchingClient) return matchingClient.focus();
+        return clients.openWindow(targetUrl);
+      }),
   );
 });

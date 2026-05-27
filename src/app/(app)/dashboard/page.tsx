@@ -1,31 +1,24 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { auth } from "@/auth";
 import { DashboardCards } from "@/components/dashboard-cards";
 import { DashboardInsights } from "@/components/dashboard-insights";
 import { KPICharts } from "@/components/kpi-charts";
-import { GoogleMapView } from "@/components/google-map-view";
 import { TicketCard } from "@/components/ticket-card";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getDashboardMetrics, getTicketsWithRelations } from "@/lib/data";
+import { getDashboardMetrics, joinTicketsWithRelations } from "@/lib/data";
+import { isAdmin } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const session = await auth();
+  const userIsAdmin = isAdmin(session?.user.role);
   const metrics = await getDashboardMetrics();
-  const tickets = await getTicketsWithRelations();
+  const tickets = joinTicketsWithRelations(metrics);
   const recentTickets = tickets.slice(0, 3);
-  const mapPoints = tickets
-    .filter((ticket) => ticket.Latitude && ticket.Longitude)
-    .map((ticket) => ({
-      id: ticket.TicketID,
-      title: ticket.customer?.HospitalName ?? "Customer not linked",
-      subtitle: `${ticket.TicketStatus} - ${ticket.TicketTitle}`,
-      latitude: Number(ticket.Latitude),
-      longitude: Number(ticket.Longitude),
-      status: ticket.TicketStatus,
-    }));
 
   return (
     <div className="space-y-6">
@@ -34,12 +27,14 @@ export default async function DashboardPage() {
           <p className="text-sm font-medium text-sky-700"></p>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Dashboard</h1>
         </div>
-        <Button asChild>
-          <Link href="/tickets/new">
-            <Plus className="size-4" />
-            New ticket
-          </Link>
-        </Button>
+        {userIsAdmin ? (
+          <Button asChild>
+            <Link href="/tickets/new">
+              <Plus className="size-4" />
+              New ticket
+            </Link>
+          </Button>
+        ) : null}
       </div>
       <DashboardCards
         open={metrics.open}
@@ -68,7 +63,6 @@ export default async function DashboardPage() {
           </Card>
         </div>
         <div className="space-y-4">
-          <GoogleMapView points={mapPoints} />
           <Card>
             <CardHeader>
               <CardTitle>Activity Timeline</CardTitle>

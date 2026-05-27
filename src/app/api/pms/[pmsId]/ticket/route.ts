@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { isAdmin } from "@/lib/permissions";
 import { dataService } from "@/lib/turso/service";
+import { notifyEngineerTicketAssigned } from "@/lib/push-notifications";
 import { compactId, uniqueCompactId } from "@/lib/utils";
 import type { ContractRecord, Ticket } from "@/types/service";
 
@@ -21,6 +23,7 @@ function warrantyStatus(expiry?: string) {
 export async function POST(_request: Request, { params }: { params: Promise<{ pmsId: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isAdmin(session.user.role)) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
   const { pmsId } = await params;
   const [pmsRows, tickets, machines, customers, contracts] = await Promise.all([
@@ -106,6 +109,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ pm
     Latitude: ticket.Latitude,
     Longitude: ticket.Longitude,
   });
+  await notifyEngineerTicketAssigned(ticket).catch((error) => console.warn("PMS ticket assignment push failed", error));
 
   return NextResponse.json({ ticket }, { status: 201 });
 }

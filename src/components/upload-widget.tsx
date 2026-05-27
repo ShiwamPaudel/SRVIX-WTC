@@ -13,15 +13,17 @@ export function UploadWidget({
   description = "Before, after, installation, and diagnostic photos.",
   buttonLabel = "Capture / Upload",
   accept = "image/*,application/pdf",
+  maxFileSizeMB,
   uploadContext,
   canRemove = true,
 }: {
-  onUploaded?: (urls: string[]) => void;
+  onUploaded?: (urls: string[]) => void | Promise<void>;
   initialUrls?: string[];
   title?: string;
   description?: string;
   buttonLabel?: string;
   accept?: string;
+  maxFileSizeMB?: number;
   uploadContext?: Record<string, string | undefined>;
   canRemove?: boolean;
 }) {
@@ -39,6 +41,9 @@ export function UploadWidget({
         const uploadFile = file.type.startsWith("image/")
           ? await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1800, useWebWorker: true })
           : file;
+        if (maxFileSizeMB && uploadFile.size >= maxFileSizeMB * 1024 * 1024) {
+          throw new Error(`${file.name} must be less than ${maxFileSizeMB} MB.`);
+        }
         const body = new FormData();
         body.append("file", uploadFile, file.name);
         Object.entries(uploadContext ?? {}).forEach(([key, value]) => {
@@ -54,7 +59,7 @@ export function UploadWidget({
       }
       const next = [...urls, ...uploaded];
       setUrls(next);
-      onUploaded?.(next);
+      await onUploaded?.(next);
       toast.success("Files uploaded");
     } catch (error) {
       toast.error("Upload failed", {
@@ -74,7 +79,7 @@ export function UploadWidget({
         </div>
         <label>
           <input className="sr-only" type="file" accept={accept} capture="environment" multiple onChange={onChange} />
-          <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#00000c] px-4 text-sm font-medium text-white">
+          <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#087fb6] px-4 text-sm font-medium text-white transition hover:bg-[#006da3]">
             {loading ? <UploadCloud className="size-4 animate-pulse" /> : accept.includes("pdf") ? <FileUp className="size-4" /> : <Camera className="size-4" />}
             {loading ? "Uploading..." : buttonLabel}
           </span>

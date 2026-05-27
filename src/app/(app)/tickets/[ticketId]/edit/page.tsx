@@ -1,11 +1,20 @@
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { BackButton } from "@/components/back-button";
 import { TicketForm } from "@/components/ticket-form";
-import { getServiceDataset, getTicket } from "@/lib/data";
+import { getTicket } from "@/lib/data";
+import { isAdmin } from "@/lib/permissions";
+import { dataService } from "@/lib/turso/service";
 
 export default async function EditTicketPage({ params }: { params: Promise<{ ticketId: string }> }) {
   const { ticketId } = await params;
-  const [ticket, dataset] = await Promise.all([getTicket(ticketId), getServiceDataset()]);
+  const [session, ticket, customers, machines, engineers] = await Promise.all([
+    auth(),
+    getTicket(ticketId),
+    dataService.customers(),
+    dataService.machines(),
+    dataService.engineers(),
+  ]);
   if (!ticket) notFound();
 
   return (
@@ -17,7 +26,7 @@ export default async function EditTicketPage({ params }: { params: Promise<{ tic
         </div>
         <BackButton fallback={`/tickets/${ticket.TicketID}`} />
       </div>
-      <TicketForm customers={dataset.customers} machines={dataset.machines} engineers={dataset.engineers} ticket={ticket} />
+      <TicketForm customers={customers} machines={machines} engineers={engineers} ticket={ticket} canAssign={isAdmin(session?.user.role)} />
     </div>
   );
 }

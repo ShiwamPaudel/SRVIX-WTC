@@ -24,6 +24,12 @@ const requiredColumns = {
     ["PMSNumber", "TEXT NOT NULL DEFAULT ''"],
     ["TicketID", "TEXT NOT NULL DEFAULT ''"],
   ],
+  push_subscriptions: [
+    ["EngineerID", "TEXT NOT NULL DEFAULT ''"],
+    ["Role", "TEXT NOT NULL DEFAULT ''"],
+    ["UserAgent", "TEXT NOT NULL DEFAULT ''"],
+    ["LastSeenAt", "TEXT NOT NULL DEFAULT ''"],
+  ],
 };
 
 for (const [table, columns] of Object.entries(requiredColumns)) {

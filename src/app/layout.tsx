@@ -18,6 +18,11 @@ export const metadata: Metadata = {
   title: "SRVIX - WTC",
   description: "Scalable Service Management System Made for your Business - Automate the Service Workflow",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/favicon-srvix.png",
+    shortcut: "/favicon-srvix.png",
+    apple: "/favicon-srvix.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -26,7 +31,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#00000c",
+  themeColor: "#12384f",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

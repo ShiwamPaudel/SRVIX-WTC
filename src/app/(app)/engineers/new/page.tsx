@@ -5,7 +5,7 @@ export default function NewEngineerPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-[#00000c]">Create Engineer Account</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-[#12384f]">Create Engineer Account</h1>
         <p className="text-sm text-slate-500">Create the field engineer profile and login access in one step.</p>
       </div>
       <Card>

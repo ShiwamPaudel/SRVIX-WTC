@@ -212,6 +212,19 @@ export type NotificationRecord = {
   SentAt: string;
 };
 
+export type PushSubscriptionRecord = {
+  SubscriptionID: string;
+  UserID: string;
+  EngineerID: string;
+  Role: UserRole | "";
+  Endpoint: string;
+  P256DH: string;
+  AuthSecret: string;
+  UserAgent: string;
+  CreatedAt: string;
+  LastSeenAt: string;
+};
+
 export type TicketWithRelations = Ticket & {
   customer?: Customer;
   machine?: Machine;

@@ -17,7 +17,7 @@ export default async function LoginPage() {
               <div className="h-10 w-px bg-slate-200" />
               <Image src="/Logo - WTC.png" alt="Web Trading Concern" width={92} height={48} className="h-12 w-auto object-contain" />
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-[#00000c]">SRVIX</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-[#12384f]">SRVIX</h1>
             <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
               One Stop Tracking : Service | PMS | Warranty | Tickets
             </p>
@@ -25,7 +25,7 @@ export default async function LoginPage() {
           <LoginForm />
         </div>
       </section>
-      <section className="hidden bg-[#f4fbff] p-8 text-[#00000c] lg:flex lg:flex-col lg:justify-between">
+      <section className="hidden bg-[#f4fbff] p-8 text-[#12384f] lg:flex lg:flex-col lg:justify-between">
         <div className="flex flex-1 items-center justify-center">
           <Image
             src="/srvix-hero.png"

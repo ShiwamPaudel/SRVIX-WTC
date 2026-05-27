@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { isAdmin } from "@/lib/permissions";
 import { sendNotification } from "@/lib/notifications";
 
 export async function POST(request: Request) {
   const session = await auth();
-  if (!session?.user || session.user.role === "Engineer") {
+  if (!session?.user || !isAdmin(session.user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

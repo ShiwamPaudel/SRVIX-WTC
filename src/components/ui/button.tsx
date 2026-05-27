@@ -8,9 +8,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-[#00000c] text-white shadow-sm hover:bg-[#101735]",
-        secondary: "bg-white text-[#00000c] ring-1 ring-slate-200 hover:bg-[#f7fbff]",
-        ghost: "text-slate-600 hover:bg-[#eef9ff] hover:text-[#00000c]",
+        default: "bg-[#087fb6] text-white shadow-sm hover:bg-[#006da3]",
+        secondary: "bg-white text-[#12384f] ring-1 ring-slate-200 hover:bg-[#f7fbff]",
+        ghost: "text-slate-600 hover:bg-[#eef9ff] hover:text-[#12384f]",
         destructive: "bg-rose-600 text-white hover:bg-rose-700",
       },
       size: {

@@ -1,8 +1,18 @@
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { TicketForm } from "@/components/ticket-form";
-import { getServiceDataset } from "@/lib/data";
+import { isAdmin } from "@/lib/permissions";
+import { dataService } from "@/lib/turso/service";
 
 export default async function NewTicketPage() {
-  const { customers, machines, engineers } = await getServiceDataset();
+  const session = await auth();
+  if (!isAdmin(session?.user.role)) redirect("/tickets");
+
+  const [customers, machines, engineers] = await Promise.all([
+    dataService.customers(),
+    dataService.machines(),
+    dataService.engineers(),
+  ]);
 
   return (
     <div className="space-y-5">
