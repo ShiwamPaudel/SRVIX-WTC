@@ -1,4 +1,4 @@
-const CACHE_NAME = "wtc-service-v2";
+const CACHE_NAME = "wtc-service-v3";
 const PRECACHE_URLS = ["/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
