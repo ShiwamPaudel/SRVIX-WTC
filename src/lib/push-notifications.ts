@@ -34,6 +34,21 @@ export function pushConfigStatus() {
   };
 }
 
+function pushErrorDetails(error: unknown) {
+  if (!error || typeof error !== "object") return {};
+  const record = error as {
+    statusCode?: number;
+    body?: string;
+    message?: string;
+    headers?: Record<string, string>;
+  };
+  return {
+    statusCode: record.statusCode,
+    body: record.body,
+    message: record.message,
+  };
+}
+
 function configureWebPush() {
   if (configured || !hasPushConfig()) return;
   webpush.setVapidDetails(
@@ -87,11 +102,20 @@ export async function savePushSubscription({
 }
 
 export async function sendPushToSubscriptions(subscriptions: PushSubscriptionRecord[], payload: PushPayload) {
-  if (!subscriptions.length || !hasPushConfig()) return { sent: 0, failed: 0, skipped: !hasPushConfig() };
+  if (!subscriptions.length || !hasPushConfig()) {
+    return {
+      sent: 0,
+      failed: 0,
+      skipped: !hasPushConfig(),
+      subscriptionCount: subscriptions.length,
+      errors: [] as ReturnType<typeof pushErrorDetails>[],
+    };
+  }
 
   configureWebPush();
   let sent = 0;
   let failed = 0;
+  const errors: ReturnType<typeof pushErrorDetails>[] = [];
   const uniqueSubscriptions = Array.from(new Map(subscriptions.map((subscription) => [subscription.Endpoint, subscription])).values());
 
   await Promise.all(
@@ -101,6 +125,7 @@ export async function sendPushToSubscriptions(subscriptions: PushSubscriptionRec
         sent += 1;
       } catch (error) {
         failed += 1;
+        errors.push(pushErrorDetails(error));
         const statusCode = typeof error === "object" && error && "statusCode" in error ? Number(error.statusCode) : 0;
         if (statusCode === 404 || statusCode === 410) {
           await dataService.deletePushSubscription(subscription.Endpoint);
@@ -111,7 +136,7 @@ export async function sendPushToSubscriptions(subscriptions: PushSubscriptionRec
     }),
   );
 
-  return { sent, failed, skipped: false };
+  return { sent, failed, skipped: false, subscriptionCount: uniqueSubscriptions.length, errors };
 }
 
 export async function sendTestPushToUser(userId: string) {

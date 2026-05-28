@@ -48,7 +48,9 @@ export function PushNotificationToggle() {
   }, []);
 
   async function serviceWorkerRegistration() {
-    return (await navigator.serviceWorker.getRegistration()) ?? navigator.serviceWorker.register("/sw.js");
+    const registration = (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.register("/sw.js"));
+    await navigator.serviceWorker.ready;
+    return registration;
   }
 
   async function enable() {
@@ -128,9 +130,14 @@ export function PushNotificationToggle() {
     setTesting(true);
     try {
       const response = await fetch("/api/push/test", { method: "POST" });
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const data = (await response.json().catch(() => null)) as {
+        error?: string;
+        result?: { sent?: number; failed?: number; subscriptionCount?: number };
+      } | null;
       if (!response.ok) throw new Error(data?.error || "Could not send a test push");
-      toast.success("Test push sent");
+      toast.success("Test push sent", {
+        description: data?.result ? `${data.result.sent ?? 0}/${data.result.subscriptionCount ?? 0} device subscription sent.` : undefined,
+      });
     } catch (error) {
       toast.error("Test push failed", {
         description: error instanceof Error ? error.message : "Enable push again and retry.",
