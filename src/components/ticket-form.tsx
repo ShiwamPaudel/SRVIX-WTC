@@ -104,6 +104,11 @@ export function TicketForm({
   }
 
   async function onSubmit(values: TicketFormValues) {
+    if (values.TicketStatus === "Closed" && !attachments.split(",").map((item) => item.trim()).filter(Boolean).length) {
+      toast.error("Attach the service report before closing this ticket");
+      return;
+    }
+
     const response = await fetch(ticket ? `/api/tickets/${ticket.TicketID}` : "/api/tickets", {
       method: ticket ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -111,7 +116,10 @@ export function TicketForm({
     });
 
     if (!response.ok) {
-      toast.error("Could not save ticket");
+      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      toast.error("Could not save ticket", {
+        description: data?.error,
+      });
       return;
     }
 
@@ -251,7 +259,11 @@ export function TicketForm({
             <p className="mt-2 text-sm text-slate-500">Select a customer and machine to auto-fill contract and PMS details.</p>
           )}
         </div>
-        <UploadWidget onUploaded={(urls) => setAttachments(urls.join(", "))} />
+        <UploadWidget
+          initialUrls={attachments.split(",").map((item) => item.trim()).filter(Boolean)}
+          uploadContext={ticket ? { ticketId: ticket.TicketID } : undefined}
+          onUploaded={(urls) => setAttachments(urls.join(", "))}
+        />
       </aside>
     </form>
   );

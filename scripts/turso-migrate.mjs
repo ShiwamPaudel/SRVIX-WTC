@@ -19,6 +19,8 @@ const requiredColumns = {
   tickets: [
     ["PMSID", "TEXT NOT NULL DEFAULT ''"],
     ["PMSNumber", "TEXT NOT NULL DEFAULT ''"],
+    ["TicketAcceptedAt", "TEXT NOT NULL DEFAULT ''"],
+    ["TicketAcceptedBy", "TEXT NOT NULL DEFAULT ''"],
   ],
   pms_schedule: [
     ["PMSNumber", "TEXT NOT NULL DEFAULT ''"],
@@ -29,6 +31,13 @@ const requiredColumns = {
     ["Role", "TEXT NOT NULL DEFAULT ''"],
     ["UserAgent", "TEXT NOT NULL DEFAULT ''"],
     ["LastSeenAt", "TEXT NOT NULL DEFAULT ''"],
+  ],
+  notifications: [
+    ["UserID", "TEXT NOT NULL DEFAULT ''"],
+    ["EngineerID", "TEXT NOT NULL DEFAULT ''"],
+    ["Role", "TEXT NOT NULL DEFAULT ''"],
+    ["URL", "TEXT NOT NULL DEFAULT ''"],
+    ["ReadAt", "TEXT NOT NULL DEFAULT ''"],
   ],
 };
 
@@ -42,6 +51,13 @@ for (const [table, columns] of Object.entries(requiredColumns)) {
     }
   }
 }
+
+await client.execute("CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications (UserID)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_notifications_engineer ON notifications (EngineerID)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_notifications_role ON notifications (Role)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_leave_requests_engineer ON leave_requests (EngineerID)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_leave_requests_status ON leave_requests (Status)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_leave_requests_date ON leave_requests (LeaveDate)");
 
 await client.execute("UPDATE tickets SET TicketStatus = 'Closed' WHERE TicketStatus IN ('Resolved', 'Closed')");
 await client.execute("UPDATE tickets SET TicketStatus = 'Pending' WHERE TicketStatus <> 'Closed'");

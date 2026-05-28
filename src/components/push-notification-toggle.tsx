@@ -59,21 +59,24 @@ export function PushNotificationToggle() {
     setLoading(true);
     try {
       const keyResponse = await fetch("/api/push/public-key");
-      const keyData = (await keyResponse.json()) as { publicKey?: string; configured?: boolean; error?: string };
-      if (!keyResponse.ok || !keyData.publicKey) {
-        throw new Error(keyData.error || "Push notifications are not configured");
+      const keyData = (await keyResponse.json()) as { publicKey?: string; configured?: boolean; missing?: string[]; error?: string };
+      if (!keyResponse.ok || !keyData.publicKey || !keyData.configured) {
+        throw new Error(
+          keyData.error ||
+            (keyData.missing?.length ? `Push notifications missing: ${keyData.missing.join(", ")}` : "Push notifications are not configured"),
+        );
       }
 
       const permission = await Notification.requestPermission();
       if (permission !== "granted") throw new Error("Notification permission was not granted");
 
       const registration = await serviceWorkerRegistration();
-      const subscription =
-        (await registration.pushManager.getSubscription()) ??
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
-        }));
+      const existingSubscription = await registration.pushManager.getSubscription();
+      if (existingSubscription) await existingSubscription.unsubscribe();
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
+      });
 
       const response = await fetch("/api/push/subscriptions", {
         method: "POST",

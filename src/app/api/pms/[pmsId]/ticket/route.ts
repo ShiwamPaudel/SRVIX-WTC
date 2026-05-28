@@ -75,6 +75,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ pm
     ContractType: ticketContractType(activeContract, computedWarrantyStatus),
     WarrantyStatus: computedWarrantyStatus,
     AssignedEngineer: pms.AssignedEngineer,
+    TicketAcceptedAt: "",
+    TicketAcceptedBy: "",
     AssistedBy: "",
     TicketStatus: "Pending",
     ResponseType: "Planned visit",

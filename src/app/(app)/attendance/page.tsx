@@ -1,4 +1,5 @@
 import { AttendanceReport } from "@/components/attendance-report";
+import { LeaveRequestForm } from "@/components/leave-request-form";
 import { MapAutoRefresh } from "@/components/map-auto-refresh";
 import { auth } from "@/auth";
 import { dataService } from "@/lib/turso/service";
@@ -15,11 +16,12 @@ function dayKey(value?: string) {
 
 export default async function AttendancePage() {
   const session = await auth();
-  const [customers, engineers, tickets, locationLogs] = await Promise.all([
+  const [customers, engineers, tickets, locationLogs, leaveRequests] = await Promise.all([
     dataService.customers(),
     dataService.engineers(),
     dataService.tickets(),
     dataService.engineerLocationLogs(),
+    dataService.leaveRequests(),
   ]);
   const customerById = new Map(customers.map((customer) => [customer.CustomerID, customer]));
   const today = new Date();
@@ -32,15 +34,15 @@ export default async function AttendancePage() {
 
   const events = [
     ...tickets
-      .filter((ticket) => ticket.AssignedEngineer && allowedEngineerIds.has(ticket.AssignedEngineer))
+      .filter((ticket) => ticket.AssignedEngineer && ticket.TicketAcceptedAt && allowedEngineerIds.has(ticket.AssignedEngineer))
       .map((ticket) => {
-        const date = dayKey(ticket.TicketDate || ticket.Date || ticket.VisitDate);
+        const date = dayKey(ticket.TicketAcceptedAt);
         const customerName = customerById.get(ticket.CustomerID)?.HospitalName || ticket.NameOfCustomer || "Customer not linked";
         return {
           engineerId: ticket.AssignedEngineer,
           date,
           type: "Ticket" as const,
-          detail: `${customerName}${ticket.TicketTitle ? ` - ${ticket.TicketTitle}` : ""}`,
+          detail: `${customerName}${ticket.TicketTitle ? ` - ${ticket.TicketTitle}` : ""} accepted`,
         };
       }),
     ...locationLogs
@@ -51,6 +53,14 @@ export default async function AttendancePage() {
         type: "Location" as const,
         detail: log.Remarks || "Location submitted",
       })),
+    ...leaveRequests
+      .filter((request) => request.Status === "Approved" && allowedEngineerIds.has(request.EngineerID))
+      .map((request) => ({
+        engineerId: request.EngineerID,
+        date: request.LeaveDate,
+        type: "Leave" as const,
+        detail: request.ReviewReason || request.Reason || "Approved leave",
+      })),
   ].filter((event) => event.date);
 
   return (
@@ -60,10 +70,11 @@ export default async function AttendancePage() {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Attendance</h1>
         <p className="text-sm text-slate-500">
           {canViewAll
-            ? "Monthly attendance by engineer. A day is present when an assigned ticket was opened that day or the engineer sent a location."
-            : "Your attendance only. A day is present when you had an assigned ticket opened that day or sent a location."}
+            ? "Monthly attendance by engineer. A day is present when an assigned ticket was accepted that day or the engineer sent a location."
+            : "Your attendance only. A day is present when you accepted an assigned ticket or sent a location."}
         </p>
       </div>
+      {session?.user.engineerId ? <LeaveRequestForm /> : null}
       <AttendanceReport
         engineers={visibleEngineers.map((engineer) => ({
           id: engineer.EngineerID,

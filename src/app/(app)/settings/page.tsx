@@ -17,13 +17,13 @@ export default async function SettingsPage() {
   if (!session?.user) redirect("/login");
   if (session.user.role !== "Admin") redirect("/dashboard");
 
-  const driveConfigured = Boolean(
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-      process.env.GOOGLE_PRIVATE_KEY &&
-      process.env.GOOGLE_DRIVE_FOLDER_ID,
+  const workDriveConfigured = Boolean(
+    process.env.ZOHO_CLIENT_ID &&
+      process.env.ZOHO_CLIENT_SECRET &&
+      process.env.ZOHO_REFRESH_TOKEN &&
+      process.env.ZOHO_WORKDRIVE_ROOT_FOLDER_ID,
   );
   const tursoConfigured = Boolean(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN);
-  const publicUploads = process.env.GOOGLE_DRIVE_PUBLIC_UPLOADS === "true";
 
   return (
     <div className="space-y-5">
@@ -51,16 +51,16 @@ export default async function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><FolderOpen className="size-5 text-sky-600" /> Service Report Storage</CardTitle>
-            <CardDescription>Files stay in Drive storage. Turso stores only the returned link.</CardDescription>
+            <CardDescription>Files stay in Zoho WorkDrive. Turso stores only the returned link.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
-              <span className="text-sm font-medium text-slate-700">Google Drive</span>
-              {statusBadge(driveConfigured)}
+              <span className="text-sm font-medium text-slate-700">Zoho WorkDrive</span>
+              {statusBadge(workDriveConfigured)}
             </div>
             <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
-              <span className="text-sm font-medium text-slate-700">Public upload links</span>
-              <Badge variant={publicUploads ? "green" : "slate"}>{publicUploads ? "Enabled" : "Private"}</Badge>
+              <span className="text-sm font-medium text-slate-700">Data center</span>
+              <Badge variant="blue">{process.env.ZOHO_DATA_CENTER || "com"}</Badge>
             </div>
           </CardContent>
         </Card>
@@ -91,7 +91,7 @@ export default async function SettingsPage() {
               <span className="text-sm font-medium text-slate-700">Turso database</span>
               {statusBadge(tursoConfigured)}
             </div>
-            <p className="text-sm text-slate-500">Recommended storage policy: ticket metadata, report links, signatures, and audit rows in Turso; PDFs and photos in Google Drive or Zoho WorkDrive.</p>
+            <p className="text-sm text-slate-500">Storage policy: ticket metadata, report links, signatures, and audit rows in Turso; PDFs and photos in Zoho WorkDrive.</p>
           </CardContent>
         </Card>
       </div>

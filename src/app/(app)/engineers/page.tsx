@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { UserPlus } from "lucide-react";
 import { EngineerCard } from "@/components/engineer-card";
+import { LeaveRequestsAdmin } from "@/components/leave-requests-admin";
 import { Button } from "@/components/ui/button";
 import { dataService } from "@/lib/turso/service";
 
 export default async function EngineersPage() {
-  const engineers = await dataService.engineers();
+  const [engineers, leaveRequests] = await Promise.all([dataService.engineers(), dataService.leaveRequests()]);
 
   return (
     <div className="space-y-5">
@@ -24,6 +25,7 @@ export default async function EngineersPage() {
       <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
         {engineers.map((engineer) => <EngineerCard key={engineer.EngineerID} engineer={engineer} />)}
       </div>
+      <LeaveRequestsAdmin initialRequests={leaveRequests.sort((a, b) => b.CreatedAt.localeCompare(a.CreatedAt))} />
     </div>
   );
 }

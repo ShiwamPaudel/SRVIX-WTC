@@ -9,6 +9,7 @@ import type {
   Engineer,
   EngineerLocationLog,
   Installation,
+  LeaveRequest,
   Machine,
   NotificationRecord,
   PMSSchedule,
@@ -30,7 +31,8 @@ type TableName =
   | "pms_schedule"
   | "users"
   | "notifications"
-  | "push_subscriptions";
+  | "push_subscriptions"
+  | "leave_requests";
 
 type DbRecord = Record<string, unknown>;
 
@@ -98,6 +100,8 @@ const columns = {
     "ContractType",
     "WarrantyStatus",
     "AssignedEngineer",
+    "TicketAcceptedAt",
+    "TicketAcceptedBy",
     "AssistedBy",
     "TicketStatus",
     "ResponseType",
@@ -164,11 +168,16 @@ const columns = {
     "NotificationID",
     "Type",
     "Recipient",
+    "UserID",
+    "EngineerID",
+    "Role",
     "Subject",
     "Message",
+    "URL",
     "Status",
     "CreatedAt",
     "SentAt",
+    "ReadAt",
   ],
   push_subscriptions: [
     "SubscriptionID",
@@ -181,6 +190,19 @@ const columns = {
     "UserAgent",
     "CreatedAt",
     "LastSeenAt",
+  ],
+  leave_requests: [
+    "LeaveRequestID",
+    "EngineerID",
+    "EngineerName",
+    "RequestedByUserID",
+    "LeaveDate",
+    "Reason",
+    "Status",
+    "ReviewedBy",
+    "ReviewReason",
+    "CreatedAt",
+    "ReviewedAt",
   ],
 } satisfies Record<TableName, string[]>;
 
@@ -197,6 +219,7 @@ const idColumns = {
   users: "UserID",
   notifications: "NotificationID",
   push_subscriptions: "SubscriptionID",
+  leave_requests: "LeaveRequestID",
 } satisfies Record<TableName, string>;
 
 function quote(identifier: string) {
@@ -418,6 +441,24 @@ export const dataService = {
   },
   async notifications() {
     return readTable<NotificationRecord>("notifications", "CreatedAt");
+  },
+  async notification(notificationId: string) {
+    return readById<NotificationRecord>("notifications", notificationId);
+  },
+  async updateNotification(notificationId: string, patch: Partial<NotificationRecord>) {
+    return updateRecord<NotificationRecord>("notifications", notificationId, patch);
+  },
+  async leaveRequests() {
+    return readTable<LeaveRequest>("leave_requests", "CreatedAt");
+  },
+  async leaveRequest(leaveRequestId: string) {
+    return readById<LeaveRequest>("leave_requests", leaveRequestId);
+  },
+  async createLeaveRequest(request: LeaveRequest) {
+    return insertRecord<LeaveRequest>("leave_requests", request);
+  },
+  async updateLeaveRequest(leaveRequestId: string, patch: Partial<LeaveRequest>) {
+    return updateRecord<LeaveRequest>("leave_requests", leaveRequestId, patch);
   },
   async pushSubscriptions() {
     return readTable<PushSubscriptionRecord>("push_subscriptions", "LastSeenAt");

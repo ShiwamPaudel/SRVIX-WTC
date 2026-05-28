@@ -14,6 +14,15 @@ function warrantyStatus(expiry?: string) {
   return date >= new Date() ? "Under Warranty" : "Warranty Expired";
 }
 
+function hasAttachment(value?: string) {
+  return Boolean(
+    value
+      ?.split(",")
+      .map((item) => item.trim())
+      .filter(Boolean).length,
+  );
+}
+
 export async function GET() {
   const tickets = await dataService.tickets();
   return NextResponse.json({ tickets });
@@ -25,6 +34,9 @@ export async function POST(request: Request) {
   if (!isAdmin(session.user.role)) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
   const body = (await request.json()) as Partial<Ticket>;
+  if (body.TicketStatus === "Closed" && !hasAttachment(body.AttachmentURLs)) {
+    return NextResponse.json({ error: "A service report attachment is required before closing a ticket." }, { status: 400 });
+  }
   const now = new Date().toISOString();
   const [tickets, machines, customers, contracts] = await Promise.all([
     dataService.tickets(),
@@ -69,6 +81,8 @@ export async function POST(request: Request) {
         : "Out of Warranty",
     WarrantyStatus: computedWarrantyStatus,
     AssignedEngineer: body.AssignedEngineer ?? "",
+    TicketAcceptedAt: "",
+    TicketAcceptedBy: "",
     AssistedBy: body.AssistedBy ?? "",
     TicketStatus: body.TicketStatus === "Closed" ? "Closed" : "Pending",
     ResponseType: body.ResponseType ?? "",

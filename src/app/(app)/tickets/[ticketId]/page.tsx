@@ -5,6 +5,7 @@ import { CalendarCheck, Cpu, Edit, History, Wrench } from "lucide-react";
 import { auth } from "@/auth";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { BackButton } from "@/components/back-button";
+import { TicketAcceptButton } from "@/components/ticket-accept-button";
 import { TicketDeleteButton } from "@/components/ticket-delete-button";
 import { TicketReportUpload } from "@/components/ticket-report-upload";
 import { ContractBadge, PriorityBadge, StatusBadge } from "@/components/status-badge";
@@ -35,6 +36,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
     .filter((item) => (item.MachineID || item.InstallationID) === machineId && item.TicketID !== ticket.TicketID)
     .sort((a, b) => (b.TicketDate || b.Date || "").localeCompare(a.TicketDate || a.Date || ""));
   const openMachineTickets = machineTickets.filter((item) => item.TicketStatus !== "Closed");
+  const canAcceptTicket =
+    session?.user.role === "Engineer" &&
+    session.user.engineerId === ticket.AssignedEngineer &&
+    ticket.TicketStatus !== "Closed" &&
+    !ticket.TicketAcceptedAt;
 
   return (
     <div className="space-y-5">
@@ -50,6 +56,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
         </div>
         <div className="flex gap-2">
           <BackButton />
+          {canAcceptTicket ? <TicketAcceptButton ticketId={ticket.TicketID} /> : null}
           <Button asChild variant="secondary">
             <Link href={`/tickets/${ticket.TicketID}/edit`}><Edit className="size-4" />Edit</Link>
           </Button>
@@ -64,6 +71,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
               <Info label="Customer" value={ticket.customer?.HospitalName ?? "Customer not linked"} />
               <Info label="Machine" value={`${ticket.machine?.DeviceName ?? "Machine not linked"} ${ticket.machine?.Model ?? ""}`.trim()} />
               <Info label="Assigned engineer" value={ticket.engineer?.EngineerName ?? "Engineer not assigned"} />
+              <Info label="Acceptance" value={ticket.TicketAcceptedAt ? `Accepted ${formatDateTime(ticket.TicketAcceptedAt)}` : "Waiting for engineer acceptance"} />
               <Info label="Visit date" value={formatDate(ticket.VisitDate)} />
               <Info label="Last updated" value={formatDateTime(ticket.LastUpdated)} />
               <Info label="Service type" value={ticket.ServiceType} />

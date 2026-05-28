@@ -7,6 +7,15 @@ import { dataService } from "@/lib/turso/service";
 import { notifyAdminsTicketClosed, notifyEngineerTicketAssigned } from "@/lib/push-notifications";
 import type { Ticket } from "@/types/service";
 
+function hasAttachment(value?: string) {
+  return Boolean(
+    value
+      ?.split(",")
+      .map((item) => item.trim())
+      .filter(Boolean).length,
+  );
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ ticketId: string }> }) {
   const { ticketId } = await params;
   const ticket = await getTicket(ticketId);
@@ -19,15 +28,50 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ti
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { ticketId } = await params;
-  const body = (await request.json()) as Partial<Ticket>;
+  const body = (await request.json()) as Partial<Ticket> & { AcceptTicket?: boolean };
   const existingTicket = await dataService.ticket(ticketId);
   if (!existingTicket) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (body.AcceptTicket) {
+    if (existingTicket.TicketStatus === "Closed") {
+      return NextResponse.json({ error: "Closed tickets cannot be accepted." }, { status: 400 });
+    }
+    if (!session.user.engineerId || session.user.engineerId !== existingTicket.AssignedEngineer) {
+      return NextResponse.json({ error: "Only the assigned engineer can accept this ticket." }, { status: 403 });
+    }
+    if (existingTicket.TicketAcceptedAt) {
+      return NextResponse.json({ ticket: existingTicket });
+    }
+
+    const now = new Date().toISOString();
+    const ticket = await dataService.updateTicket(ticketId, {
+      TicketAcceptedAt: now,
+      TicketAcceptedBy: session.user.name ?? session.user.email ?? session.user.id,
+    });
+    await dataService.createTicketLog({
+      LogID: compactId("LOG"),
+      TicketID: ticketId,
+      UpdatedBy: session.user.name ?? "Engineer",
+      UpdateDate: now,
+      Status: ticket.TicketStatus,
+      Remarks: "Ticket accepted",
+      AttachmentURL: "",
+      Latitude: ticket.Latitude,
+      Longitude: ticket.Longitude,
+    });
+    return NextResponse.json({ ticket });
+  }
   if (!isAdmin(session.user.role) && body.AssignedEngineer != null && body.AssignedEngineer !== existingTicket.AssignedEngineer) {
     return NextResponse.json({ error: "Admin access required to assign engineers" }, { status: 403 });
+  }
+  if (body.TicketStatus === "Closed" && !hasAttachment(body.AttachmentURLs || existingTicket.AttachmentURLs)) {
+    return NextResponse.json({ error: "A service report attachment is required before closing a ticket." }, { status: 400 });
   }
   const normalizedPatch = {
     ...body,
     ...(body.TicketStatus ? { TicketStatus: body.TicketStatus === "Closed" ? "Closed" : "Pending" } : {}),
+    ...(body.AssignedEngineer && body.AssignedEngineer !== existingTicket.AssignedEngineer
+      ? { TicketAcceptedAt: "", TicketAcceptedBy: "" }
+      : {}),
   } satisfies Partial<Ticket>;
   const ticket = await dataService.updateTicket(ticketId, normalizedPatch);
   const engineerChanged = Boolean(body.AssignedEngineer && body.AssignedEngineer !== existingTicket.AssignedEngineer);

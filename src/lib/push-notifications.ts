@@ -2,8 +2,9 @@ import "server-only";
 
 import webpush from "web-push";
 import { compactId } from "@/lib/utils";
+import { createInAppNotification } from "@/lib/notifications";
 import { dataService } from "@/lib/turso/service";
-import type { Engineer, PushSubscriptionRecord, Ticket } from "@/types/service";
+import type { Engineer, LeaveRequest, PushSubscriptionRecord, Ticket, UserRole } from "@/types/service";
 
 type PushPayload = {
   title: string;
@@ -20,6 +21,17 @@ export function pushPublicKey() {
 
 export function hasPushConfig() {
   return Boolean(pushPublicKey() && process.env.WEB_PUSH_VAPID_PRIVATE_KEY);
+}
+
+export function pushConfigStatus() {
+  return {
+    publicKey: pushPublicKey(),
+    configured: hasPushConfig(),
+    missing: [
+      pushPublicKey() ? "" : "WEB_PUSH_VAPID_PUBLIC_KEY",
+      process.env.WEB_PUSH_VAPID_PRIVATE_KEY ? "" : "WEB_PUSH_VAPID_PRIVATE_KEY",
+    ].filter(Boolean),
+  };
 }
 
 function configureWebPush() {
@@ -102,33 +114,99 @@ export async function sendPushToSubscriptions(subscriptions: PushSubscriptionRec
   return { sent, failed, skipped: false };
 }
 
+async function notifyTarget({
+  target,
+  payload,
+  type,
+}: {
+  target: { userId?: string; engineerId?: string; role?: UserRole };
+  payload: PushPayload;
+  type: string;
+}) {
+  const subscriptions = target.userId
+    ? await dataService.pushSubscriptionsForUser(target.userId)
+    : target.engineerId
+      ? await dataService.pushSubscriptionsForEngineer(target.engineerId)
+      : target.role
+        ? await dataService.pushSubscriptionsForRole(target.role)
+        : [];
+
+  await createInAppNotification({
+    type,
+    userId: target.userId,
+    engineerId: target.engineerId,
+    role: target.role,
+    subject: payload.title,
+    message: payload.body,
+    url: payload.url,
+  });
+  return sendPushToSubscriptions(subscriptions, payload);
+}
+
 export async function notifyEngineerTicketAssigned(ticket: Ticket) {
   if (!ticket.AssignedEngineer) return;
-  const subscriptions = await dataService.pushSubscriptionsForEngineer(ticket.AssignedEngineer);
-  await sendPushToSubscriptions(subscriptions, {
+  await notifyTarget({
+    target: { engineerId: ticket.AssignedEngineer },
+    type: "Ticket assigned",
+    payload: {
     title: "Ticket assigned",
     body: `${ticket.TicketID}: ${ticket.TicketTitle}`,
     url: `/tickets/${ticket.TicketID}`,
     tag: `ticket-assigned-${ticket.TicketID}`,
+    },
   });
 }
 
 export async function notifyAdminsLocationSent(engineer: Engineer, remarks: string) {
-  const subscriptions = await dataService.pushSubscriptionsForRole("Admin");
-  await sendPushToSubscriptions(subscriptions, {
+  await notifyTarget({
+    target: { role: "Admin" },
+    type: "Location sent",
+    payload: {
     title: "Location sent",
     body: `${engineer.EngineerName} shared location. ${remarks}`.slice(0, 180),
     url: "/maps",
     tag: `location-${engineer.EngineerID}`,
+    },
   });
 }
 
 export async function notifyAdminsTicketClosed(ticket: Ticket, closedBy: string) {
-  const subscriptions = await dataService.pushSubscriptionsForRole("Admin");
-  await sendPushToSubscriptions(subscriptions, {
+  await notifyTarget({
+    target: { role: "Admin" },
+    type: "Ticket closed",
+    payload: {
     title: "Ticket closed",
     body: `${ticket.TicketID} closed by ${closedBy}: ${ticket.TicketTitle}`,
     url: `/tickets/${ticket.TicketID}`,
     tag: `ticket-closed-${ticket.TicketID}`,
+    },
+  });
+}
+
+export async function notifyAdminsLeaveRequested(request: LeaveRequest) {
+  await notifyTarget({
+    target: { role: "Admin" },
+    type: "Leave requested",
+    payload: {
+      title: "Leave requested",
+      body: `${request.EngineerName} requested leave on ${request.LeaveDate}.`,
+      url: "/engineers",
+      tag: `leave-request-${request.LeaveRequestID}`,
+    },
+  });
+}
+
+export async function notifyEngineerLeaveReviewed(request: LeaveRequest) {
+  await notifyTarget({
+    target: { engineerId: request.EngineerID },
+    type: `Leave ${request.Status.toLowerCase()}`,
+    payload: {
+      title: `Leave ${request.Status.toLowerCase()}`,
+      body: request.ReviewReason
+        ? `${request.LeaveDate}: ${request.ReviewReason}`
+        : `${request.LeaveDate}: your leave request was ${request.Status.toLowerCase()}.`,
+      url: "/attendance",
+      tag: `leave-reviewed-${request.LeaveRequestID}`,
+    },
   });
 }

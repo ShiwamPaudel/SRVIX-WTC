@@ -18,7 +18,7 @@ type AttendanceEngineer = {
 type AttendanceEvent = {
   engineerId: string;
   date: string;
-  type: "Ticket" | "Location";
+  type: "Ticket" | "Location" | "Leave";
   detail: string;
 };
 
@@ -85,8 +85,7 @@ export function AttendanceReport({
 
   const presentCells = days.reduce(
     (count, date) =>
-      count +
-      visibleEngineers.filter((engineer) => (eventsByCell.get(`${date}:${engineer.id}`) ?? []).length > 0).length,
+      count + visibleEngineers.filter((engineer) => (eventsByCell.get(`${date}:${engineer.id}`) ?? []).some((event) => event.type !== "Leave")).length,
     0,
   );
   const possibleCells = days.length * visibleEngineers.length;
@@ -204,11 +203,14 @@ export function AttendanceReport({
                   </td>
                   {visibleEngineers.map((engineer) => {
                     const cellEvents = eventsByCell.get(`${date}:${engineer.id}`) ?? [];
+                    const isLeave = cellEvents.some((event) => event.type === "Leave");
+                    const isPresent = cellEvents.some((event) => event.type !== "Leave");
                     return (
                       <td key={engineer.id} className="border-b border-slate-100 px-4 py-3">
                         {cellEvents.length ? (
                           <div className="space-y-2">
-                            <Badge variant="green">Present</Badge>
+                            {isPresent ? <Badge variant="green">Present</Badge> : null}
+                            {isLeave ? <Badge variant="blue">Leave</Badge> : null}
                             {cellEvents.map((event, index) => (
                               <p key={`${event.type}-${index}`} className="text-sm text-slate-700">
                                 <span className="font-semibold text-slate-950">{event.type}</span> - {event.detail}

@@ -8,6 +8,7 @@ import { formatDateTime, minutesAgo } from "@/lib/utils";
 import type { EngineerLocationLog } from "@/types/service";
 
 export const dynamic = "force-dynamic";
+const ACTIVE_LOCATION_WINDOW_MS = 8 * 60 * 60 * 1000;
 
 function locationUpdateLabel(value?: string) {
   if (!value) return "No recent check in";
@@ -30,6 +31,10 @@ export default async function MapsPage() {
   const engineerById = new Map(engineers.map((engineer) => [engineer.EngineerID, engineer]));
 
   const points = Array.from(latestLocationByEngineer.values())
+    .filter((location) => {
+      const updatedAt = new Date(location.CreatedAt).getTime();
+      return Number.isFinite(updatedAt) && Date.now() - updatedAt <= ACTIVE_LOCATION_WINDOW_MS;
+    })
     .map((location) => {
       const engineer = engineerById.get(location.EngineerID);
       return {
@@ -50,7 +55,7 @@ export default async function MapsPage() {
       <MapAutoRefresh />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Live Map</h1>
-        <p className="text-sm text-slate-500">Latest locations submitted by engineers.</p>
+        <p className="text-sm text-slate-500">Engineers appear on the map only when their latest location is less than 8 hours old.</p>
       </div>
       {session?.user.engineerId ? (
         <Card>

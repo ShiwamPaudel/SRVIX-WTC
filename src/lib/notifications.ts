@@ -3,12 +3,17 @@ import "server-only";
 import nodemailer from "nodemailer";
 import { compactId } from "@/lib/utils";
 import { dataService } from "@/lib/turso/service";
+import type { NotificationRecord, UserRole } from "@/types/service";
 
 type NotificationInput = {
   type: string;
   recipient: string;
+  userId?: string;
+  engineerId?: string;
+  role?: UserRole | "";
   subject: string;
   message: string;
+  url?: string;
 };
 
 function hasMailConfig() {
@@ -44,10 +49,34 @@ export async function sendNotification(input: NotificationInput) {
     NotificationID: compactId("NTF"),
     Type: input.type,
     Recipient: input.recipient,
+    UserID: input.userId ?? "",
+    EngineerID: input.engineerId ?? "",
+    Role: input.role ?? "",
     Subject: input.subject,
     Message: input.message,
+    URL: input.url ?? "",
     Status: status,
     CreatedAt: new Date().toISOString(),
     SentAt: sentAt,
+    ReadAt: "",
   });
+}
+
+export async function createInAppNotification(input: Omit<NotificationInput, "recipient"> & { recipient?: string }) {
+  const now = new Date().toISOString();
+  return dataService.createNotification({
+    NotificationID: compactId("NTF"),
+    Type: input.type,
+    Recipient: input.recipient ?? "",
+    UserID: input.userId ?? "",
+    EngineerID: input.engineerId ?? "",
+    Role: input.role ?? "",
+    Subject: input.subject,
+    Message: input.message,
+    URL: input.url ?? "",
+    Status: "Unread",
+    CreatedAt: now,
+    SentAt: "",
+    ReadAt: "",
+  } satisfies NotificationRecord);
 }

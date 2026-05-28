@@ -21,6 +21,8 @@ export type ServiceType =
 
 export type TicketStatus = "Pending" | "Closed";
 
+export type LeaveRequestStatus = "Pending" | "Approved" | "Rejected";
+
 export type Priority = "Low" | "Medium" | "High" | "Critical";
 
 export type Customer = {
@@ -148,6 +150,8 @@ export type Ticket = {
   ContractType: ContractType;
   WarrantyStatus?: string;
   AssignedEngineer: string;
+  TicketAcceptedAt?: string;
+  TicketAcceptedBy?: string;
   AssistedBy: string;
   TicketStatus: TicketStatus;
   ResponseType: string;
@@ -205,11 +209,30 @@ export type NotificationRecord = {
   NotificationID: string;
   Type: string;
   Recipient: string;
+  UserID?: string;
+  EngineerID?: string;
+  Role?: UserRole | "";
   Subject: string;
   Message: string;
+  URL?: string;
   Status: string;
   CreatedAt: string;
   SentAt: string;
+  ReadAt?: string;
+};
+
+export type LeaveRequest = {
+  LeaveRequestID: string;
+  EngineerID: string;
+  EngineerName: string;
+  RequestedByUserID: string;
+  LeaveDate: string;
+  Reason: string;
+  Status: LeaveRequestStatus;
+  ReviewedBy: string;
+  ReviewReason: string;
+  CreatedAt: string;
+  ReviewedAt: string;
 };
 
 export type PushSubscriptionRecord = {

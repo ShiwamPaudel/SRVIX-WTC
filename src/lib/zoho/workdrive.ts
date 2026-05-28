@@ -29,12 +29,16 @@ function zohoDomains() {
 }
 
 function configured() {
-  return Boolean(
-    process.env.ZOHO_CLIENT_ID &&
-      process.env.ZOHO_CLIENT_SECRET &&
-      process.env.ZOHO_REFRESH_TOKEN &&
-      process.env.ZOHO_WORKDRIVE_ROOT_FOLDER_ID,
-  );
+  return missingConfig().length === 0;
+}
+
+function missingConfig() {
+  return [
+    process.env.ZOHO_CLIENT_ID ? "" : "ZOHO_CLIENT_ID",
+    process.env.ZOHO_CLIENT_SECRET ? "" : "ZOHO_CLIENT_SECRET",
+    process.env.ZOHO_REFRESH_TOKEN ? "" : "ZOHO_REFRESH_TOKEN",
+    process.env.ZOHO_WORKDRIVE_ROOT_FOLDER_ID ? "" : "ZOHO_WORKDRIVE_ROOT_FOLDER_ID",
+  ].filter(Boolean);
 }
 
 function sanitizeSegment(value?: string, fallback = "Not Set") {
@@ -269,7 +273,7 @@ async function createDownloadLink(resourceId: string, linkName: string) {
 export const zohoWorkDriveService: StorageProvider = {
   isConfigured: configured,
   async uploadFile(file: File, context?: ReportStorageContext): Promise<StoredFile> {
-    if (!configured()) throw new Error("Zoho WorkDrive is not configured");
+    if (!configured()) throw new Error(`Zoho WorkDrive is not configured. Missing: ${missingConfig().join(", ")}`);
 
     const folderId = await ensureFolderPath(folderPath(context));
     const fileName = reportFileName(file, context);
