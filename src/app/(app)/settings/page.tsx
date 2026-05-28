@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { zohoWorkDriveConfigStatus } from "@/lib/zoho/workdrive";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +18,7 @@ export default async function SettingsPage() {
   if (!session?.user) redirect("/login");
   if (session.user.role !== "Admin") redirect("/dashboard");
 
-  const workDriveConfigured = Boolean(
-    process.env.ZOHO_CLIENT_ID &&
-      process.env.ZOHO_CLIENT_SECRET &&
-      process.env.ZOHO_REFRESH_TOKEN &&
-      process.env.ZOHO_WORKDRIVE_ROOT_FOLDER_ID,
-  );
+  const workDriveStatus = zohoWorkDriveConfigStatus();
   const tursoConfigured = Boolean(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN);
 
   return (
@@ -56,12 +52,17 @@ export default async function SettingsPage() {
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
               <span className="text-sm font-medium text-slate-700">Zoho WorkDrive</span>
-              {statusBadge(workDriveConfigured)}
+              {statusBadge(workDriveStatus.configured)}
             </div>
             <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
               <span className="text-sm font-medium text-slate-700">Data center</span>
-              <Badge variant="blue">{process.env.ZOHO_DATA_CENTER || "com"}</Badge>
+              <Badge variant="blue">{workDriveStatus.dataCenter}</Badge>
             </div>
+            {workDriveStatus.missing.length ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Missing: {workDriveStatus.missing.join(", ")}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 

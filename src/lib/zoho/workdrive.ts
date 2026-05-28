@@ -41,6 +41,14 @@ function missingConfig() {
   ].filter(Boolean);
 }
 
+export function zohoWorkDriveConfigStatus() {
+  return {
+    configured: configured(),
+    dataCenter: process.env.ZOHO_DATA_CENTER || "com",
+    missing: missingConfig(),
+  };
+}
+
 function sanitizeSegment(value?: string, fallback = "Not Set") {
   return (value || fallback)
     .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")

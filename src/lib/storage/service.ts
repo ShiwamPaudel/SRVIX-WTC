@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { ReportStorageContext, StoredFile } from "@/lib/storage/types";
-import { zohoWorkDriveService } from "@/lib/zoho/workdrive";
+import { zohoWorkDriveConfigStatus, zohoWorkDriveService } from "@/lib/zoho/workdrive";
 
 export const storageService = {
   isConfigured() {
@@ -12,6 +12,11 @@ export const storageService = {
       return zohoWorkDriveService.uploadFile(file, context);
     }
 
-    throw new Error("Zoho WorkDrive is not configured. Configure the Zoho WorkDrive env vars in Vercel.");
+    const status = zohoWorkDriveConfigStatus();
+    throw new Error(
+      status.missing.length
+        ? `Zoho WorkDrive is not configured. Missing Vercel env vars: ${status.missing.join(", ")}.`
+        : "Zoho WorkDrive is not configured. Redeploy after saving the Vercel env vars.",
+    );
   },
 };

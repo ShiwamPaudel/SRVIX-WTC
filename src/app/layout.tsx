@@ -47,7 +47,18 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
         <PWARegister />
-        <Toaster richColors position="top-right" />
+        <Toaster
+          richColors
+          closeButton
+          position="top-right"
+          toastOptions={{
+            classNames: {
+              toast: "srvix-toast",
+              title: "srvix-toast-title",
+              description: "srvix-toast-description",
+            },
+          }}
+        />
       </body>
     </html>
   );
