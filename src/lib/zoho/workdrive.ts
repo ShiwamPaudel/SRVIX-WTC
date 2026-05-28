@@ -68,6 +68,10 @@ function normalizeResourceId(value?: string) {
     const segments = url.pathname.split("/").filter(Boolean);
     const foldersIndex = segments.lastIndexOf("folders");
     if (foldersIndex >= 0 && segments[foldersIndex + 1]) return segments[foldersIndex + 1];
+    const folderIndex = segments.lastIndexOf("folder");
+    if (folderIndex >= 0 && segments[folderIndex + 1]) return segments[folderIndex + 1];
+    const resourceId = url.searchParams.get("resourceId") || url.searchParams.get("resource_id") || url.searchParams.get("folderId");
+    if (resourceId) return resourceId;
     return segments.at(-1) ?? text;
   } catch {
     return text;

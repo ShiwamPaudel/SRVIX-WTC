@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -20,6 +20,7 @@ export function PushNotificationToggle() {
   const [supported, setSupported] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [supportMessage, setSupportMessage] = useState("");
 
   useEffect(() => {
@@ -123,6 +124,22 @@ export function PushNotificationToggle() {
     }
   }
 
+  async function testPush() {
+    setTesting(true);
+    try {
+      const response = await fetch("/api/push/test", { method: "POST" });
+      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) throw new Error(data?.error || "Could not send a test push");
+      toast.success("Test push sent");
+    } catch (error) {
+      toast.error("Test push failed", {
+        description: error instanceof Error ? error.message : "Enable push again and retry.",
+      });
+    } finally {
+      setTesting(false);
+    }
+  }
+
   return (
     <div className="rounded-md border border-slate-200 bg-white p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -130,10 +147,18 @@ export function PushNotificationToggle() {
           <p className="text-sm font-semibold text-[#12384f]">Push notifications</p>
           <p className="mt-1 text-sm text-slate-500">{enabled ? "Enabled on this device." : "Enable this device for SRVIX alerts."}</p>
         </div>
-        <Button type="button" variant={enabled ? "secondary" : "default"} onClick={enabled ? disable : enable} disabled={loading || !supported}>
-          {enabled ? <BellOff className="size-4" /> : <Bell className="size-4" />}
-          {loading ? "Saving..." : enabled ? "Disable" : "Enable"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {enabled ? (
+            <Button type="button" variant="secondary" onClick={testPush} disabled={testing || loading}>
+              <Send className="size-4" />
+              {testing ? "Sending..." : "Test"}
+            </Button>
+          ) : null}
+          <Button type="button" variant={enabled ? "secondary" : "default"} onClick={enabled ? disable : enable} disabled={loading || !supported}>
+            {enabled ? <BellOff className="size-4" /> : <Bell className="size-4" />}
+            {loading ? "Saving..." : enabled ? "Disable" : "Enable"}
+          </Button>
+        </div>
       </div>
       {!supported && supportMessage ? <p className="mt-3 text-sm text-amber-700">{supportMessage}</p> : null}
     </div>

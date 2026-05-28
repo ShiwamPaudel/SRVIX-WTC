@@ -3,6 +3,7 @@ import { GoogleMapView } from "@/components/google-map-view";
 import { LiveLocationTracker } from "@/components/live-location-tracker";
 import { MapAutoRefresh } from "@/components/map-auto-refresh";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { dataService } from "@/lib/turso/service";
 import { formatDateTime, minutesAgo } from "@/lib/utils";
 import type { EngineerLocationLog } from "@/types/service";
@@ -49,6 +50,19 @@ export default async function MapsPage() {
       };
     })
     .filter((point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude));
+  const locationRows = engineers
+    .map((engineer) => {
+      const latest = latestLocationByEngineer.get(engineer.EngineerID);
+      const updatedAt = latest ? new Date(latest.CreatedAt).getTime() : 0;
+      const active = Boolean(latest && Number.isFinite(updatedAt) && Date.now() - updatedAt <= ACTIVE_LOCATION_WINDOW_MS);
+      return {
+        engineer,
+        latest,
+        active,
+        sortTime: updatedAt,
+      };
+    })
+    .sort((a, b) => Number(b.active) - Number(a.active) || b.sortTime - a.sortTime || a.engineer.EngineerName.localeCompare(b.engineer.EngineerName));
 
   return (
     <div className="space-y-5">
@@ -67,7 +81,43 @@ export default async function MapsPage() {
       ) : null}
       <Card>
         <CardHeader><CardTitle>Engineer Location Map</CardTitle></CardHeader>
-        <CardContent><GoogleMapView points={points} height={620} /></CardContent>
+        <CardContent>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <GoogleMapView points={points} height={560} />
+            <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
+              <div className="border-b border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-sm font-semibold text-slate-950">Engineer Status</p>
+              </div>
+              <div className="max-h-[560px] overflow-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="sticky top-0 bg-white text-xs uppercase text-slate-500 shadow-sm">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Engineer Name</th>
+                      <th className="px-3 py-2 font-semibold">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {locationRows.map(({ engineer, latest, active }) => (
+                      <tr key={engineer.EngineerID} className="align-top">
+                        <td className="px-3 py-3">
+                          <p className="font-medium text-slate-950">{engineer.EngineerName}</p>
+                          <p className="mt-1 text-xs text-slate-500">{latest ? locationUpdateLabel(latest.CreatedAt) : "No check in"}</p>
+                        </td>
+                        <td className="px-3 py-3">
+                          {active ? (
+                            <p className="text-sm text-slate-700">{latest?.Remarks || "Active"}</p>
+                          ) : (
+                            <Badge variant="slate">Inactive</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </CardContent>
       </Card>
       <Card>
         <CardHeader><CardTitle>Recent Location Updates</CardTitle></CardHeader>

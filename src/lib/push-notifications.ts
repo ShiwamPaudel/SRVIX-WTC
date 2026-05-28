@@ -114,6 +114,16 @@ export async function sendPushToSubscriptions(subscriptions: PushSubscriptionRec
   return { sent, failed, skipped: false };
 }
 
+export async function sendTestPushToUser(userId: string) {
+  const subscriptions = await dataService.pushSubscriptionsForUser(userId);
+  return sendPushToSubscriptions(subscriptions, {
+    title: "SRVIX test notification",
+    body: "Push notifications are working on this device.",
+    url: "/profile",
+    tag: `push-test-${userId}`,
+  });
+}
+
 async function notifyTarget({
   target,
   payload,

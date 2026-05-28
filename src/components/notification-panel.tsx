@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Bell, CheckCheck, Inbox, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import type { NotificationRecord } from "@/types/service";
 
 export function NotificationPanel() {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -31,10 +33,20 @@ export function NotificationPanel() {
   }
 
   useEffect(() => {
+    setMounted(true);
     loadNotifications();
     const interval = window.setInterval(loadNotifications, 30000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [open]);
 
   async function markAllRead() {
     await fetch("/api/notifications", {
@@ -67,7 +79,7 @@ export function NotificationPanel() {
         type="button"
         variant="ghost"
         size="icon"
-        className="relative size-10 shrink-0 rounded-md border border-slate-200 bg-white text-[#12384f] shadow-sm hover:bg-[#f7fbff]"
+        className="relative size-10 shrink-0 cursor-pointer rounded-md border border-slate-200 bg-white text-[#12384f] shadow-sm hover:bg-[#f7fbff]"
         onClick={() => setOpen(true)}
         aria-label="Notifications"
       >
@@ -84,19 +96,20 @@ export function NotificationPanel() {
         ) : null}
       </Button>
 
-      {open ? (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+      {open && mounted
+        ? createPortal(
+        <div className="fixed inset-0 z-[2147483000] overflow-hidden">
           <button
-            className="absolute inset-0 cursor-default bg-slate-950/35 backdrop-blur-[1px]"
+            className="absolute inset-0 cursor-default bg-slate-950/40 backdrop-blur-sm"
             type="button"
             aria-label="Close notifications"
             onClick={() => setOpen(false)}
           />
-          <aside className="absolute right-0 top-0 flex h-dvh w-full max-w-[26rem] flex-col border-l border-slate-200 bg-white shadow-2xl sm:right-3 sm:top-3 sm:h-[calc(100dvh-1.5rem)] sm:rounded-lg sm:border">
-            <div className="flex min-h-16 items-center justify-between gap-3 border-b border-slate-200 px-4">
+          <aside className="absolute right-0 top-0 flex h-dvh w-full max-w-[27rem] flex-col border-l border-slate-200 bg-white shadow-2xl sm:right-4 sm:top-4 sm:h-[calc(100dvh-2rem)] sm:rounded-lg sm:border">
+            <div className="flex min-h-[72px] items-center justify-between gap-3 border-b border-slate-200 px-5">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-[#12384f]">Notifications</p>
+                  <p className="text-base font-semibold text-[#12384f]">Notifications</p>
                   {unreadCount ? <Badge variant="blue">{unreadCount} unread</Badge> : null}
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500">{loading ? "Refreshing" : `${notifications.length} recent alerts`}</p>
@@ -118,21 +131,26 @@ export function NotificationPanel() {
                 </Button>
               </div>
             </div>
-            <div className="flex-1 space-y-2 overflow-y-auto bg-slate-50/70 p-3">
+            <div className="flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3 sm:p-4">
               {notifications.map((notification) => {
                 const unread = !notification.ReadAt && notification.Status !== "Read";
                 const content = (
                   <div
-                    className={`relative rounded-md border bg-white p-3 text-left shadow-sm transition ${
-                      unread ? "border-sky-200 ring-1 ring-sky-100" : "border-slate-200 hover:border-slate-300"
+                    className={`relative rounded-md border bg-white p-4 text-left shadow-sm transition ${
+                      unread ? "border-sky-300 ring-1 ring-sky-100" : "border-slate-200 hover:border-slate-300 hover:bg-white"
                     }`}
                   >
-                    {unread ? <span className="absolute left-0 top-3 h-8 w-1 rounded-r-full bg-sky-500" /> : null}
-                    <div className="flex items-start justify-between gap-3 pl-2">
-                      <p className="line-clamp-2 text-sm font-semibold leading-5 text-slate-950">{notification.Subject}</p>
-                      <p className="shrink-0 text-[11px] font-medium text-slate-400">{formatDateTime(notification.CreatedAt)}</p>
+                    {unread ? <span className="absolute left-0 top-4 h-8 w-1 rounded-r-full bg-sky-500" /> : null}
+                    <div className="flex items-start gap-3 pl-2">
+                      <span className={`mt-1 size-2 shrink-0 rounded-full ${unread ? "bg-sky-500" : "bg-slate-300"}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="line-clamp-2 text-sm font-semibold leading-5 text-slate-950">{notification.Subject}</p>
+                          <p className="shrink-0 text-[11px] font-medium text-slate-400">{formatDateTime(notification.CreatedAt)}</p>
+                        </div>
+                        <p className="mt-1 line-clamp-3 text-sm leading-5 text-slate-600">{notification.Message}</p>
+                      </div>
                     </div>
-                    <p className="mt-1 line-clamp-3 pl-2 text-sm leading-5 text-slate-600">{notification.Message}</p>
                   </div>
                 );
 
@@ -170,8 +188,10 @@ export function NotificationPanel() {
               ) : null}
             </div>
           </aside>
-        </div>
-      ) : null}
+        </div>,
+        document.body,
+        )
+        : null}
     </>
   );
 }
