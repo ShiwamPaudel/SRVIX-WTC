@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { BackButton } from "@/components/back-button";
 import { TicketForm } from "@/components/ticket-form";
@@ -16,6 +16,7 @@ export default async function EditTicketPage({ params }: { params: Promise<{ tic
     dataService.engineers(),
   ]);
   if (!ticket) notFound();
+  if (session?.user.role === "Engineer") redirect(`/tickets/${ticket.TicketID}`);
 
   return (
     <div className="space-y-5">

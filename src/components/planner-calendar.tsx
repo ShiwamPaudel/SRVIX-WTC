@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Save } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -135,6 +135,8 @@ export function PlannerCalendar({
   const [ruleEngineer, setRuleEngineer] = useState("");
   const [ruleFrequency, setRuleFrequency] = useState("30");
   const [ruleStartDate, setRuleStartDate] = useState(toDateInputValue(today));
+  const [editingRuleId, setEditingRuleId] = useState("");
+  const [editingFrequency, setEditingFrequency] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const customerById = useMemo(() => new Map(customers.map((customer) => [customer.CustomerID, customer])), [customers]);
@@ -231,6 +233,18 @@ export function PlannerCalendar({
     refresh();
   }
 
+  async function deleteJson(url: string, body: object, success: string) {
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) throw new Error(data?.error || "Could not delete");
+    toast.success(success);
+    refresh();
+  }
+
   function createPlan() {
     startTransition(async () => {
       try {
@@ -289,6 +303,31 @@ export function PlannerCalendar({
         }
       } catch (error) {
         toast.error("Could not update planner", { description: error instanceof Error ? error.message : undefined });
+      }
+    });
+  }
+
+  function startRuleEdit(rule: CustomerVisitRule) {
+    setEditingRuleId(rule.RuleID);
+    setEditingFrequency(rule.FrequencyDays);
+  }
+
+  function updateRuleFrequency(ruleId: string) {
+    startTransition(async () => {
+      try {
+        await patchJson("/api/planner/rules", { RuleID: ruleId, FrequencyDays: editingFrequency }, "Visit frequency updated");
+      } catch (error) {
+        toast.error("Could not update visit frequency", { description: error instanceof Error ? error.message : undefined });
+      }
+    });
+  }
+
+  function deleteRule(ruleId: string) {
+    startTransition(async () => {
+      try {
+        await deleteJson("/api/planner/rules", { RuleID: ruleId }, "Visit rule deleted");
+      } catch (error) {
+        toast.error("Could not delete visit rule", { description: error instanceof Error ? error.message : undefined });
       }
     });
   }
@@ -398,18 +437,58 @@ export function PlannerCalendar({
                     <tr>
                       <th className="px-3 py-2">Name of Customer</th>
                       <th className="px-3 py-2">Visit Frequency</th>
+                      <th className="px-3 py-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {visitRules.map((rule) => (
                       <tr key={rule.RuleID} className="border-t border-slate-100">
                         <td className="px-3 py-2 font-medium text-slate-900">{customerById.get(rule.CustomerID)?.HospitalName ?? "Customer not linked"}</td>
-                        <td className="px-3 py-2 text-slate-600">Every {rule.FrequencyDays} days</td>
+                        <td className="px-3 py-2 text-slate-600">
+                          {editingRuleId === rule.RuleID ? (
+                            <Input
+                              type="number"
+                              min="1"
+                              value={editingFrequency}
+                              onChange={(event) => setEditingFrequency(event.target.value)}
+                              className="h-9 w-28"
+                              aria-label="Edit visit frequency"
+                            />
+                          ) : (
+                            <>Every {rule.FrequencyDays} days</>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex justify-end gap-2">
+                            {editingRuleId === rule.RuleID ? (
+                              <>
+                                <Button type="button" size="sm" onClick={() => updateRuleFrequency(rule.RuleID)} disabled={isPending}>
+                                  <Save className="size-4" />
+                                  Save
+                                </Button>
+                                <Button type="button" variant="secondary" size="sm" onClick={() => setEditingRuleId("")} disabled={isPending}>
+                                  <X className="size-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button type="button" variant="secondary" size="sm" onClick={() => startRuleEdit(rule)} disabled={isPending}>
+                                  <Pencil className="size-4" />
+                                  Edit
+                                </Button>
+                                <Button type="button" variant="destructive" size="sm" onClick={() => deleteRule(rule.RuleID)} disabled={isPending}>
+                                  <Trash2 className="size-4" />
+                                  Delete
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                     {!visitRules.length ? (
                       <tr>
-                        <td colSpan={2} className="px-3 py-6 text-center text-sm text-slate-500">
+                        <td colSpan={3} className="px-3 py-6 text-center text-sm text-slate-500">
                           No regular visit rules yet.
                         </td>
                       </tr>

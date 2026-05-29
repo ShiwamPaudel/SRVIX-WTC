@@ -60,6 +60,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ti
     });
     return NextResponse.json({ ticket });
   }
+  if (session.user.role === "Engineer") {
+    if (!session.user.engineerId || session.user.engineerId !== existingTicket.AssignedEngineer) {
+      return NextResponse.json({ error: "Only the assigned engineer can update this ticket." }, { status: 403 });
+    }
+
+    const allowedEngineerFields = new Set([
+      "AttachmentURLs",
+      "TicketStatus",
+      "EngineerRemarks",
+      "Resolution",
+      "CompletionDate",
+    ]);
+    const blockedField = Object.keys(body).find((key) => !allowedEngineerFields.has(key));
+    if (blockedField) {
+      return NextResponse.json({ error: "Engineers can only attach reports, add remarks, and close assigned tickets." }, { status: 403 });
+    }
+  }
   if (!isAdmin(session.user.role) && body.AssignedEngineer != null && body.AssignedEngineer !== existingTicket.AssignedEngineer) {
     return NextResponse.json({ error: "Admin access required to assign engineers" }, { status: 403 });
   }

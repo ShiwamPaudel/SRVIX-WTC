@@ -520,6 +520,9 @@ export const dataService = {
   async updateCustomerVisitRule(ruleId: string, patch: Partial<CustomerVisitRule>) {
     return updateRecord<CustomerVisitRule>("customer_visit_rules", ruleId, patch);
   },
+  async deleteCustomerVisitRule(ruleId: string) {
+    await deleteRecord("customer_visit_rules", ruleId);
+  },
   async pushSubscriptionsForUser(userId: string) {
     return readWhere<PushSubscriptionRecord>("push_subscriptions", "UserID", userId, "LastSeenAt");
   },

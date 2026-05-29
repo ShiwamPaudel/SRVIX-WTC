@@ -67,3 +67,19 @@ export async function PATCH(request: Request) {
   const visitRule = await dataService.updateCustomerVisitRule(existing.RuleID, patch);
   return NextResponse.json({ visitRule });
 }
+
+export async function DELETE(request: Request) {
+  const session = await auth();
+  if (!session?.user || !isAdmin(session.user.role)) {
+    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  }
+
+  const body = (await request.json().catch(() => ({}))) as { RuleID?: string };
+  if (!body.RuleID) return NextResponse.json({ error: "RuleID is required" }, { status: 400 });
+
+  const existing = await dataService.customerVisitRule(body.RuleID);
+  if (!existing) return NextResponse.json({ error: "Rule not found" }, { status: 404 });
+
+  await dataService.deleteCustomerVisitRule(existing.RuleID);
+  return NextResponse.json({ ok: true });
+}

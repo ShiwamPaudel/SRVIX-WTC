@@ -8,6 +8,7 @@ import { BackButton } from "@/components/back-button";
 import { TicketAcceptButton } from "@/components/ticket-accept-button";
 import { TicketDeleteButton } from "@/components/ticket-delete-button";
 import { TicketReportUpload } from "@/components/ticket-report-upload";
+import { TicketClosePanel } from "@/components/ticket-close-panel";
 import { ContractBadge, StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
     session.user.engineerId === ticket.AssignedEngineer &&
     ticket.TicketStatus !== "Closed" &&
     !ticket.TicketAcceptedAt;
+  const canCloseTicket =
+    ticket.TicketStatus !== "Closed" &&
+    (session?.user.role === "Admin" || (session?.user.role === "Engineer" && session.user.engineerId === ticket.AssignedEngineer));
+  const canEditTicket = session?.user.role !== "Engineer";
 
   return (
     <div className="space-y-5">
@@ -56,9 +61,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
         <div className="flex gap-2">
           <BackButton />
           {canAcceptTicket ? <TicketAcceptButton ticketId={ticket.TicketID} /> : null}
-          <Button asChild variant="secondary">
-            <Link href={`/tickets/${ticket.TicketID}/edit`}><Edit className="size-4" />Edit</Link>
-          </Button>
+          {canEditTicket ? (
+            <Button asChild variant="secondary">
+              <Link href={`/tickets/${ticket.TicketID}/edit`}><Edit className="size-4" />Edit</Link>
+            </Button>
+          ) : null}
           {session?.user.role === "Admin" ? <TicketDeleteButton ticketId={ticket.TicketID} /> : null}
         </div>
       </div>
@@ -93,6 +100,12 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
             ticketId={ticket.TicketID}
             attachmentUrls={ticket.AttachmentURLs}
             canRemove={session?.user.role === "Admin" || session?.user.role === "Manager"}
+          />
+          <TicketClosePanel
+            ticketId={ticket.TicketID}
+            attachmentUrls={ticket.AttachmentURLs}
+            canClose={canCloseTicket}
+            isClosed={ticket.TicketStatus === "Closed"}
           />
         </div>
         <div className="space-y-4">
