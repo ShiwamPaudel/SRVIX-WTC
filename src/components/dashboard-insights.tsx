@@ -42,9 +42,9 @@ export function DashboardInsights({
 }) {
   const now = new Date();
   const openTickets = tickets.filter((ticket) => ticket.TicketStatus !== "Closed");
-  const priorityData = countBy(
-    openTickets.map((ticket) => ticket.Priority),
-    ["Critical", "High", "Medium", "Low"],
+  const statusData = countBy(
+    tickets.map((ticket) => ticket.TicketStatus),
+    ["Pending", "Closed"],
   );
   const serviceData = Object.entries(
     tickets.reduce<Record<string, number>>((record, ticket) => {
@@ -101,17 +101,17 @@ export function DashboardInsights({
     <div className="grid gap-4 xl:grid-cols-4">
       <Card className="xl:col-span-2">
         <CardHeader>
-          <CardTitle>Open Ticket Priority</CardTitle>
+          <CardTitle>Ticket Status</CardTitle>
         </CardHeader>
         <CardContent className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={priorityData}>
+            <BarChart data={statusData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="name" tickLine={false} axisLine={false} />
               <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
               <Tooltip />
               <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {priorityData.map((_, index) => <Cell key={index} fill={colors[index]} />)}
+                {statusData.map((_, index) => <Cell key={index} fill={colors[index]} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>

@@ -97,15 +97,6 @@ export async function getDashboardMetrics() {
   const closed = dataset.tickets.filter((ticket) => ticket.TicketStatus === "Closed").length;
   const pendingPms = dataset.pmsSchedule.filter((pms) => pms.Status !== "Completed").length;
   const activeEngineers = dataset.engineers.filter((engineer) => engineer.ActiveStatus !== "Inactive").length;
-  const critical = dataset.tickets.filter((ticket) => ticket.Priority === "Critical").length;
-  const datedClosedTickets = dataset.tickets.filter((ticket) => ticket.TicketStatus === "Closed" && ticket.TicketDate);
-  const inSla = datedClosedTickets.filter((ticket) => {
-    const openedAt = new Date(`${ticket.TicketDate}T00:00:00`).getTime();
-    const closedAt = new Date(`${ticket.CompletionDate || ticket.LastUpdated || ticket.TicketDate}T00:00:00`).getTime();
-    if (Number.isNaN(openedAt) || Number.isNaN(closedAt)) return false;
-    return closedAt - openedAt <= 2 * 24 * 60 * 60 * 1000;
-  }).length;
-  const slaPulse = datedClosedTickets.length ? Math.round((inSla / datedClosedTickets.length) * 100) : 0;
 
-  return { ...dataset, open, closed, pendingPms, activeEngineers, critical, slaPulse };
+  return { ...dataset, open, closed, pendingPms, activeEngineers };
 }

@@ -49,10 +49,16 @@ function pushErrorDetails(error: unknown) {
   };
 }
 
+function vapidSubject() {
+  const subject = process.env.WEB_PUSH_VAPID_SUBJECT || process.env.SMTP_FROM || process.env.SMTP_USER || "admin@srvix.local";
+  if (subject.includes(":")) return subject;
+  return `mailto:${subject}`;
+}
+
 function configureWebPush() {
   if (configured || !hasPushConfig()) return;
   webpush.setVapidDetails(
-    process.env.WEB_PUSH_VAPID_SUBJECT || `mailto:${process.env.SMTP_FROM || process.env.SMTP_USER || "admin@srvix.local"}`,
+    vapidSubject(),
     pushPublicKey(),
     process.env.WEB_PUSH_VAPID_PRIVATE_KEY ?? "",
   );

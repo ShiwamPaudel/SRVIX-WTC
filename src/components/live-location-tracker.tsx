@@ -49,9 +49,11 @@ export function LiveLocationTracker({ engineerId }: { engineerId?: string }) {
         toast.success("Location sent", { description: "The live map has your latest position." });
         router.refresh();
       },
-      () => {
+      (error) => {
         setSending(false);
-        toast.error("Location permission denied");
+        toast.error("Location could not be sent", {
+          description: error.message || "Allow location permission for SRVIX and try again.",
+        });
       },
       { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 },
     );

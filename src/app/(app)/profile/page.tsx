@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import { auth } from "@/auth";
 import { BackButton } from "@/components/back-button";
+import { LocationPermissionCard } from "@/components/location-permission-card";
 import { ProfileForm } from "@/components/profile-form";
 import { PushNotificationToggle } from "@/components/push-notification-toggle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +49,7 @@ export default async function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <PushNotificationToggle />
+            <LocationPermissionCard />
             <ProfileForm name={session.user.name} email={session.user.email} role={session.user.role} />
           </CardContent>
         </Card>

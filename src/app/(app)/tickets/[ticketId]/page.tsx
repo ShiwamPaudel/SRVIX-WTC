@@ -8,7 +8,7 @@ import { BackButton } from "@/components/back-button";
 import { TicketAcceptButton } from "@/components/ticket-accept-button";
 import { TicketDeleteButton } from "@/components/ticket-delete-button";
 import { TicketReportUpload } from "@/components/ticket-report-upload";
-import { ContractBadge, PriorityBadge, StatusBadge } from "@/components/status-badge";
+import { ContractBadge, StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, formatDateTime } from "@/lib/utils";
@@ -50,7 +50,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
           <h1 className="text-2xl font-semibold tracking-tight text-slate-950">{ticket.TicketTitle}</h1>
           <div className="mt-2 flex flex-wrap gap-2">
             <StatusBadge status={ticket.TicketStatus} />
-            <PriorityBadge priority={ticket.Priority} />
             <ContractBadge contract={ticket.ContractType} />
           </div>
         </div>

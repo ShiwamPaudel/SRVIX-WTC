@@ -84,6 +84,7 @@ export default async function AttendancePage() {
         events={events}
         defaultFrom={toDateInputValue(monthStart)}
         defaultTo={toDateInputValue(today)}
+        canChooseEngineer={canViewAll}
       />
     </div>
   );

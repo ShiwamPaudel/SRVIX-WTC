@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, Users } from "lucide-react";
+import { CalendarClock, CheckCircle2, ClipboardList, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 type Metric = {
@@ -13,27 +13,21 @@ export function DashboardCards({
   closed,
   pendingPms,
   activeEngineers,
-  critical,
-  slaPulse,
 }: {
   open: number;
   closed: number;
   pendingPms: number;
   activeEngineers: number;
-  critical: number;
-  slaPulse: number;
 }) {
   const metrics: Metric[] = [
     { label: "Pending Tickets", value: open, detail: "Needs service action", icon: ClipboardList },
     { label: "Closed Tickets", value: closed, detail: "Completed workflow", icon: CheckCircle2 },
     { label: "Pending PMS", value: pendingPms, detail: "Due or scheduled", icon: CalendarClock },
     { label: "Active Engineers", value: activeEngineers, detail: "Field capacity", icon: Users },
-    { label: "Critical", value: critical, detail: "Escalation queue", icon: AlertTriangle },
-    { label: "SLA Pulse", value: `${slaPulse}%`, detail: "Closed within 48 hrs", icon: Activity },
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => (
         <Card key={metric.label}>
           <CardContent className="flex items-center justify-between gap-4 p-4">

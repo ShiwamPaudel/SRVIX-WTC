@@ -8,7 +8,7 @@ import { TicketCard } from "@/components/ticket-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectNative } from "@/components/ui/select";
-import { contractTypes, priorities, serviceTypes, ticketStatuses } from "@/lib/constants";
+import { contractTypes, serviceTypes, ticketStatuses } from "@/lib/constants";
 import { getTicketsWithRelations } from "@/lib/data";
 import { isAdmin } from "@/lib/permissions";
 import { dataService } from "@/lib/turso/service";
@@ -19,7 +19,6 @@ export default async function TicketsPage({
   searchParams: Promise<{
     q?: string;
     status?: string;
-    priority?: string;
     serviceType?: string;
     contractType?: string;
     engineer?: string;
@@ -29,7 +28,9 @@ export default async function TicketsPage({
 }) {
   const session = await auth();
   const userIsAdmin = isAdmin(session?.user.role);
+  const isEngineerView = session?.user.role === "Engineer";
   const params = await searchParams;
+  const effectiveStatus = isEngineerView ? params.status || "Pending" : params.status || "";
   const [tickets, engineers] = await Promise.all([
     getTicketsWithRelations(session?.user.role, session?.user.engineerId),
     dataService.engineers(),
@@ -41,8 +42,7 @@ export default async function TicketsPage({
           .toLowerCase()
           .includes(query)
       : true;
-    const matchesStatus = params.status ? ticket.TicketStatus === params.status : true;
-    const matchesPriority = params.priority ? ticket.Priority === params.priority : true;
+    const matchesStatus = effectiveStatus && effectiveStatus !== "All" ? ticket.TicketStatus === effectiveStatus : true;
     const matchesServiceType = params.serviceType ? ticket.ServiceType === params.serviceType : true;
     const matchesContractType = params.contractType ? ticket.ContractType === params.contractType : true;
     const matchesEngineer = params.engineer ? ticket.AssignedEngineer === params.engineer : true;
@@ -52,7 +52,6 @@ export default async function TicketsPage({
     return (
       matchesQuery &&
       matchesStatus &&
-      matchesPriority &&
       matchesServiceType &&
       matchesContractType &&
       matchesEngineer &&
@@ -62,11 +61,14 @@ export default async function TicketsPage({
   });
   const activeFilterCount = [
     params.q,
-    params.status,
-    params.priority,
-    params.serviceType,
-    params.contractType,
-    params.engineer,
+    isEngineerView
+      ? params.status && params.status !== "Pending"
+        ? params.status
+        : undefined
+      : params.status,
+    !isEngineerView ? params.serviceType : undefined,
+    !isEngineerView ? params.contractType : undefined,
+    !isEngineerView ? params.engineer : undefined,
     params.dateFrom,
     params.dateTo,
   ].filter(Boolean).length;
@@ -108,41 +110,42 @@ export default async function TicketsPage({
             <Input className={filterInputClass} name="q" placeholder="Ticket, customer, device..." defaultValue={params.q} />
           </FilterField>
           <FilterField label="Status">
-            <SelectNative name="status" defaultValue={params.status ?? ""} className={filterSelectClass}>
-            <option value="">All status</option>
-            {ticketStatuses.map((status) => (
-              <option key={status}>{status}</option>
-            ))}
+            <SelectNative name="status" defaultValue={effectiveStatus} className={filterSelectClass}>
+            {isEngineerView ? <option value="Pending">Pending</option> : <option value="">All status</option>}
+            {isEngineerView ? <option value="All">All</option> : null}
+            {ticketStatuses
+              .filter((status) => !isEngineerView || status === "Closed")
+              .map((status) => (
+                <option key={status}>{status}</option>
+              ))}
             </SelectNative>
           </FilterField>
-          <FilterField label="Priority">
-            <SelectNative name="priority" defaultValue={params.priority ?? ""} className={filterSelectClass}>
-            <option value="">All priority</option>
-            {priorities.map((priority) => <option key={priority}>{priority}</option>)}
-            </SelectNative>
-          </FilterField>
-          <FilterField label="Engineer" className="min-w-52">
-            <SelectNative name="engineer" defaultValue={params.engineer ?? ""} className={filterSelectClass}>
-            <option value="">All engineers</option>
-            {engineers.map((engineer) => (
-              <option key={engineer.EngineerID} value={engineer.EngineerID}>
-                {engineer.EngineerName}
-              </option>
-            ))}
-            </SelectNative>
-          </FilterField>
-          <FilterField label="Service" className="min-w-56">
-            <SelectNative name="serviceType" defaultValue={params.serviceType ?? ""} className={filterSelectClass}>
-            <option value="">All service types</option>
-            {serviceTypes.map((type) => <option key={type}>{type}</option>)}
-            </SelectNative>
-          </FilterField>
-          <FilterField label="Contract">
-            <SelectNative name="contractType" defaultValue={params.contractType ?? ""} className={filterSelectClass}>
-            <option value="">All contracts</option>
-            {contractTypes.map((type) => <option key={type}>{type}</option>)}
-            </SelectNative>
-          </FilterField>
+          {!isEngineerView ? (
+            <>
+              <FilterField label="Engineer" className="min-w-52">
+                <SelectNative name="engineer" defaultValue={params.engineer ?? ""} className={filterSelectClass}>
+                <option value="">All engineers</option>
+                {engineers.map((engineer) => (
+                  <option key={engineer.EngineerID} value={engineer.EngineerID}>
+                    {engineer.EngineerName}
+                  </option>
+                ))}
+                </SelectNative>
+              </FilterField>
+              <FilterField label="Service" className="min-w-56">
+                <SelectNative name="serviceType" defaultValue={params.serviceType ?? ""} className={filterSelectClass}>
+                <option value="">All service types</option>
+                {serviceTypes.map((type) => <option key={type}>{type}</option>)}
+                </SelectNative>
+              </FilterField>
+              <FilterField label="Contract">
+                <SelectNative name="contractType" defaultValue={params.contractType ?? ""} className={filterSelectClass}>
+                <option value="">All contracts</option>
+                {contractTypes.map((type) => <option key={type}>{type}</option>)}
+                </SelectNative>
+              </FilterField>
+            </>
+          ) : null}
           <FilterField label="From">
             <Input className={filterInputClass} type="date" name="dateFrom" defaultValue={params.dateFrom ?? ""} aria-label="Date from" />
           </FilterField>

@@ -219,7 +219,7 @@ export default async function PMSPage({
       <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Priority Alerts</CardTitle>
+            <CardTitle>Due Alerts</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {[...overdue, ...upcoming].slice(0, 6).map((row) => (

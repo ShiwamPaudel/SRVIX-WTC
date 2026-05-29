@@ -1,4 +1,4 @@
-import type { ContractType, Priority, ServiceType, TicketStatus, UserRole } from "@/types/service";
+import type { ContractType, ServiceType, TicketStatus, UserRole } from "@/types/service";
 
 export const serviceTypes: ServiceType[] = [
   "Breakdown (OnSite Addressed)",
@@ -13,8 +13,6 @@ export const serviceTypes: ServiceType[] = [
 ];
 
 export const ticketStatuses: TicketStatus[] = ["Pending", "Closed"];
-
-export const priorities: Priority[] = ["Low", "Medium", "High", "Critical"];
 
 export const contractTypes: ContractType[] = [
   "Under Warranty",

@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     ProblemDescription: body.ProblemDescription ?? "",
     Description: body.ProblemDescription ?? "",
     ServiceType: body.ServiceType ?? "Breakdown (OnSite Addressed)",
-    Priority: body.Priority ?? "Medium",
+    Priority: "Medium",
     ContractType: activeContract
       ? activeContract.ContractType === "AMC"
         ? "Under AMC"

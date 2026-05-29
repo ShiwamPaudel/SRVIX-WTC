@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Clock3, Save } from "lucide-react";
 import { toast } from "sonner";
-import { priorities, serviceTypes, ticketStatuses } from "@/lib/constants";
+import { serviceTypes, ticketStatuses } from "@/lib/constants";
 import { compactId } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,6 @@ const schema = z.object({
   TicketTitle: z.string().min(3),
   ProblemDescription: z.string().min(5),
   ServiceType: z.string().min(1),
-  Priority: z.string().min(1),
   ContractType: z.string().min(1),
   AssignedEngineer: z.string().min(1),
   AssistedBy: z.string().optional(),
@@ -41,33 +40,36 @@ export function TicketForm({
   machines,
   engineers,
   ticket,
+  initialMachineId,
   canAssign = true,
 }: {
   customers: Customer[];
   machines: Machine[];
   engineers: Engineer[];
   ticket?: Ticket;
+  initialMachineId?: string;
   canAssign?: boolean;
 }) {
   const router = useRouter();
   const [attachments, setAttachments] = useState(ticket?.AttachmentURLs ?? "");
+  const initialMachine = !ticket && initialMachineId ? machines.find((machine) => machine.MachineID === initialMachineId) : undefined;
+  const initialCustomer = initialMachine ? customers.find((customer) => customer.CustomerID === initialMachine.CustomerID) : undefined;
   const form = useForm<TicketFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       TicketID: ticket?.TicketID ?? compactId("TKT"),
-      CustomerID: ticket?.CustomerID ?? "",
-      MachineID: ticket?.MachineID ?? "",
+      CustomerID: ticket?.CustomerID ?? initialMachine?.CustomerID ?? "",
+      MachineID: ticket?.MachineID ?? initialMachine?.MachineID ?? "",
       TicketTitle: ticket?.TicketTitle ?? "",
       ProblemDescription: ticket?.ProblemDescription ?? "",
       ServiceType: ticket?.ServiceType ?? "Breakdown (OnSite Addressed)",
-      Priority: ticket?.Priority ?? "Medium",
-      ContractType: ticket?.ContractType ?? "Under Warranty",
+      ContractType: ticket?.ContractType ?? initialMachine?.ContractType ?? "Under Warranty",
       AssignedEngineer: ticket?.AssignedEngineer ?? "",
       AssistedBy: ticket?.AssistedBy ?? "",
       TicketStatus: ticket?.TicketStatus ?? "Pending",
       VisitDate: ticket?.VisitDate ?? new Date().toISOString().slice(0, 10),
-      Latitude: ticket?.Latitude ?? "",
-      Longitude: ticket?.Longitude ?? "",
+      Latitude: ticket?.Latitude ?? initialCustomer?.Latitude ?? "",
+      Longitude: ticket?.Longitude ?? initialCustomer?.Longitude ?? "",
       AttachmentURLs: ticket?.AttachmentURLs ?? "",
     },
   });
@@ -170,12 +172,6 @@ export function TicketForm({
             <span className="text-sm font-medium text-slate-700">Service type</span>
             <SelectNative {...form.register("ServiceType")}>
               {serviceTypes.map((type) => <option key={type}>{type}</option>)}
-            </SelectNative>
-          </label>
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-700">Priority</span>
-            <SelectNative {...form.register("Priority")}>
-              {priorities.map((priority) => <option key={priority}>{priority}</option>)}
             </SelectNative>
           </label>
           <label className="space-y-2">

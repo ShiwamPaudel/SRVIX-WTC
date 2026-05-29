@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, BellOff, Send } from "lucide-react";
+import { Bell, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
@@ -28,7 +28,8 @@ export function PushNotificationToggle() {
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
-    const isSupported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+    const hasWebPush = window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+    const isSupported = hasWebPush && (!isIos || isStandalone);
     setSupported(isSupported);
     if (!isSupported) {
       if (isIos && !isStandalone) {
@@ -102,39 +103,27 @@ export function PushNotificationToggle() {
     }
   }
 
-  async function disable() {
-    setLoading(true);
-    try {
-      const registration = await navigator.serviceWorker.getRegistration();
-      const subscription = await registration?.pushManager.getSubscription();
-      if (subscription) {
-        await fetch("/api/push/subscriptions", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint: subscription.endpoint }),
-        });
-        await subscription.unsubscribe();
-      }
-      setEnabled(false);
-      toast.success("Push notifications disabled");
-    } catch (error) {
-      toast.error("Could not disable push notifications", {
-        description: error instanceof Error ? error.message : "Try again from this device.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function testPush() {
     setTesting(true);
     try {
       const response = await fetch("/api/push/test", { method: "POST" });
       const data = (await response.json().catch(() => null)) as {
         error?: string;
-        result?: { sent?: number; failed?: number; subscriptionCount?: number };
+        result?: {
+          sent?: number;
+          failed?: number;
+          subscriptionCount?: number;
+          skipped?: boolean;
+          errors?: { statusCode?: number; body?: string; message?: string }[];
+        };
       } | null;
-      if (!response.ok) throw new Error(data?.error || "Could not send a test push");
+      if (!response.ok) {
+        const firstError = data?.result?.errors?.[0];
+        const detail = [firstError?.statusCode ? `Provider status ${firstError.statusCode}` : "", firstError?.body || firstError?.message]
+          .filter(Boolean)
+          .join(": ");
+        throw new Error([data?.error, detail].filter(Boolean).join(" "));
+      }
       toast.success("Test push sent", {
         description: data?.result ? `${data.result.sent ?? 0}/${data.result.subscriptionCount ?? 0} device subscription sent.` : undefined,
       });
@@ -161,9 +150,9 @@ export function PushNotificationToggle() {
               {testing ? "Sending..." : "Test"}
             </Button>
           ) : null}
-          <Button type="button" variant={enabled ? "secondary" : "default"} onClick={enabled ? disable : enable} disabled={loading || !supported}>
-            {enabled ? <BellOff className="size-4" /> : <Bell className="size-4" />}
-            {loading ? "Saving..." : enabled ? "Disable" : "Enable"}
+          <Button type="button" variant={enabled ? "secondary" : "default"} onClick={enable} disabled={loading || !supported}>
+            <Bell className="size-4" />
+            {loading ? "Saving..." : enabled ? "Re-enable" : "Enable"}
           </Button>
         </div>
       </div>

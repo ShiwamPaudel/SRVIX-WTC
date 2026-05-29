@@ -41,18 +41,18 @@ export default async function DashboardPage() {
         closed={metrics.closed}
         pendingPms={metrics.pendingPms}
         activeEngineers={metrics.activeEngineers}
-        critical={metrics.critical}
-        slaPulse={metrics.slaPulse}
       />
-      <DashboardInsights
-        tickets={metrics.tickets}
-        engineers={metrics.engineers}
-        pmsSchedule={metrics.pmsSchedule}
-        contracts={metrics.contracts}
-      />
+      {userIsAdmin ? (
+        <DashboardInsights
+          tickets={metrics.tickets}
+          engineers={metrics.engineers}
+          pmsSchedule={metrics.pmsSchedule}
+          contracts={metrics.contracts}
+        />
+      ) : null}
       <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
         <div className="space-y-4">
-          <KPICharts tickets={metrics.tickets} engineers={metrics.engineers} />
+          {userIsAdmin ? <KPICharts tickets={metrics.tickets} engineers={metrics.engineers} /> : null}
           <Card>
             <CardHeader>
               <CardTitle>Recent Tickets</CardTitle>

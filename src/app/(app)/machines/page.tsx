@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { Building2, CalendarCheck, Cpu, ImageIcon, MapPin, Plus, X } from "lucide-react";
 import { auth } from "@/auth";
-import { FilterField, FilterSummary, FilterToolbar, filterInputClass, filterSelectClass } from "@/components/filter-toolbar";
+import { FilterField, FilterSummary, FilterToolbar, filterInputClass } from "@/components/filter-toolbar";
 import { LiveFilterForm } from "@/components/live-filter-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SelectNative } from "@/components/ui/select";
 import { isAdmin } from "@/lib/permissions";
 import { dataService } from "@/lib/turso/service";
 import type { Machine, Ticket as ServiceTicket } from "@/types/service";
@@ -58,8 +57,6 @@ export default async function MachinesPage({
   const session = await auth();
   const userIsAdmin = isAdmin(session?.user.role);
   const query = (params.q ?? "").trim().toLowerCase();
-  const selectedCustomer = params.customer ?? "";
-  const selectedStatus = params.status ?? "";
   const [customers, machines, tickets] = await Promise.all([
     dataService.customers(),
     dataService.machines(),
@@ -110,9 +107,7 @@ export default async function MachinesPage({
       .toLowerCase();
 
     const matchesQuery = query ? searchText.includes(query) : true;
-    const matchesCustomer = selectedCustomer ? machine.CustomerID === selectedCustomer : true;
-    const matchesStatus = selectedStatus ? machine.Status === selectedStatus : true;
-    return matchesQuery && matchesCustomer && matchesStatus;
+    return matchesQuery;
   });
 
   const filteredByCustomer = filtered.reduce<Map<string, MachineWithContext[]>>((grouped, machine) => {
@@ -128,9 +123,8 @@ export default async function MachinesPage({
     }))
     .filter((group) => group.machines.length);
 
-  const openTicketCount = filtered.reduce((total, machine) => total + machine.openTickets.length, 0);
-  const statuses = Array.from(new Set(rows.map((machine) => machine.Status).filter(Boolean))).sort();
-  const activeFilterCount = [params.q, params.customer, params.status].filter(Boolean).length;
+  const activeFilterCount = [params.q].filter(Boolean).length;
+  const customerSuggestions = Array.from(new Set(customers.map((customer) => customer.HospitalName).filter(Boolean))).sort();
 
   return (
     <div className="space-y-5">
@@ -186,45 +180,18 @@ export default async function MachinesPage({
             <Input
               className={filterInputClass}
               name="q"
+              list="machine-customer-suggestions"
               placeholder="Institution, device, model, serial..."
               defaultValue={params.q ?? ""}
             />
-          </FilterField>
-          <FilterField label="Institution" className="min-w-72">
-            <SelectNative name="customer" defaultValue={selectedCustomer} className={filterSelectClass}>
-            <option value="">All institutions</option>
-            {customers.map((customer) => (
-              <option key={customer.CustomerID} value={customer.CustomerID}>
-                {customer.HospitalName}
-              </option>
-            ))}
-            </SelectNative>
-          </FilterField>
-          <FilterField label="Status" className="min-w-52">
-            <SelectNative name="status" defaultValue={selectedStatus} className={filterSelectClass}>
-            <option value="">All machine status</option>
-            {statuses.map((status) => (
-              <option key={status}>{status}</option>
-            ))}
-            </SelectNative>
+            <datalist id="machine-customer-suggestions">
+              {customerSuggestions.map((customerName) => (
+                <option key={customerName} value={customerName} />
+              ))}
+            </datalist>
           </FilterField>
         </FilterToolbar>
       </LiveFilterForm>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Matched equipment</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{filtered.length}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Institutions shown</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{grouped.length}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Pending linked tickets</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{openTicketCount}</p>
-        </div>
-      </div>
 
       <div className="space-y-5">
         {grouped.map(({ customer, machines }) => (

@@ -67,7 +67,7 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
           <BackButton fallback="/machines" />
           {userIsAdmin ? (
             <Button asChild>
-              <Link href={`/tickets/new`}>
+              <Link href={`/tickets/new?machineId=${encodeURIComponent(machine.MachineID)}`}>
                 <Ticket className="size-4" />
                 New Ticket
               </Link>

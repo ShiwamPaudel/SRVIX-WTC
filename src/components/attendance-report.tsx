@@ -51,27 +51,22 @@ export function AttendanceReport({
   events,
   defaultFrom,
   defaultTo,
+  canChooseEngineer = false,
 }: {
   engineers: AttendanceEngineer[];
   events: AttendanceEvent[];
   defaultFrom: string;
   defaultTo: string;
+  canChooseEngineer?: boolean;
 }) {
   const [dateFrom, setDateFrom] = useState(defaultFrom);
   const [dateTo, setDateTo] = useState(defaultTo);
   const [engineerId, setEngineerId] = useState("");
-  const [query, setQuery] = useState("");
 
-  const visibleEngineers = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return engineers.filter((engineer) => {
-      const matchesEngineer = engineerId ? engineer.id === engineerId : true;
-      const matchesQuery = normalizedQuery
-        ? `${engineer.name} ${engineer.department ?? ""}`.toLowerCase().includes(normalizedQuery)
-        : true;
-      return matchesEngineer && matchesQuery;
-    });
-  }, [engineerId, engineers, query]);
+  const visibleEngineers = useMemo(
+    () => (canChooseEngineer && engineerId ? engineers.filter((engineer) => engineer.id === engineerId) : engineers),
+    [canChooseEngineer, engineerId, engineers],
+  );
 
   const days = useMemo(() => dateRange(dateFrom, dateTo), [dateFrom, dateTo]);
   const eventsByCell = useMemo(() => {
@@ -116,21 +111,6 @@ export function AttendanceReport({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Attendance</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{attendancePercent}%</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Present records</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{presentCells}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-500">Engineers shown</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{visibleEngineers.length}</p>
-        </div>
-      </div>
-
       <FilterToolbar
         summary={
           <>
@@ -151,24 +131,18 @@ export function AttendanceReport({
         <FilterField label="To">
           <Input className={filterInputClass} type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} aria-label="Date to" />
         </FilterField>
-        <FilterField label="Engineer" className="min-w-56">
-          <SelectNative value={engineerId} onChange={(event) => setEngineerId(event.target.value)} className={filterSelectClass}>
-            <option value="">All engineers</option>
-            {engineers.map((engineer) => (
-              <option key={engineer.id} value={engineer.id}>
-                {engineer.name}
-              </option>
-            ))}
-          </SelectNative>
-        </FilterField>
-        <FilterField label="Search" className="min-w-72 flex-1">
-          <Input
-            className={filterInputClass}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Engineer or department..."
-          />
-        </FilterField>
+        {canChooseEngineer ? (
+          <FilterField label="Engineer" className="min-w-56">
+            <SelectNative value={engineerId} onChange={(event) => setEngineerId(event.target.value)} className={filterSelectClass}>
+              <option value="">All engineers</option>
+              {engineers.map((engineer) => (
+                <option key={engineer.id} value={engineer.id}>
+                  {engineer.name}
+                </option>
+              ))}
+            </SelectNative>
+          </FilterField>
+        ) : null}
       </FilterToolbar>
 
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
