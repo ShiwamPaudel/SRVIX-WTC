@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     InstallationDate: toDateInputValue(installationDate),
     WarrantyYears: String(warrantyYears),
     WarrantyExpiry: toDateInputValue(warrantyExpiry),
-    Status: body.Status ?? "Operational",
+    Status: "",
     Remarks: body.Remarks ?? "",
     ImageURL: body.ImageURL || model.ImageURL || "",
   };

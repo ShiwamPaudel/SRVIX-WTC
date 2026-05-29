@@ -56,6 +56,7 @@ export function CustomerForm() {
         <SelectNative name="CustomerType" defaultValue="Hospital">
           <option>Hospital</option>
           <option>Clinic</option>
+          <option>Medical College</option>
           <option>Diagnostic Center</option>
           <option>Distributor</option>
           <option>Other</option>

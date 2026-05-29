@@ -194,6 +194,35 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   LastSeenAt TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS planned_visits (
+  PlanID TEXT PRIMARY KEY,
+  PlanType TEXT NOT NULL DEFAULT '',
+  CustomerID TEXT NOT NULL DEFAULT '',
+  MachineID TEXT NOT NULL DEFAULT '',
+  PMSID TEXT NOT NULL DEFAULT '',
+  TicketID TEXT NOT NULL DEFAULT '',
+  AssignedEngineer TEXT NOT NULL DEFAULT '',
+  VisitDate TEXT NOT NULL DEFAULT '',
+  Status TEXT NOT NULL DEFAULT '',
+  Remarks TEXT NOT NULL DEFAULT '',
+  CreatedBy TEXT NOT NULL DEFAULT '',
+  CreatedAt TEXT NOT NULL DEFAULT '',
+  UpdatedAt TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS customer_visit_rules (
+  RuleID TEXT PRIMARY KEY,
+  CustomerID TEXT NOT NULL DEFAULT '',
+  FrequencyDays TEXT NOT NULL DEFAULT '',
+  AssignedEngineer TEXT NOT NULL DEFAULT '',
+  StartDate TEXT NOT NULL DEFAULT '',
+  LastGeneratedDate TEXT NOT NULL DEFAULT '',
+  ActiveStatus TEXT NOT NULL DEFAULT '',
+  Remarks TEXT NOT NULL DEFAULT '',
+  CreatedAt TEXT NOT NULL DEFAULT '',
+  UpdatedAt TEXT NOT NULL DEFAULT ''
+);
+
 CREATE INDEX IF NOT EXISTS idx_installations_customer ON installations (CustomerID);
 CREATE INDEX IF NOT EXISTS idx_installations_model ON installations (ModelID);
 CREATE INDEX IF NOT EXISTS idx_contracts_installation ON contracts (InstallationID);
@@ -213,3 +242,8 @@ CREATE INDEX IF NOT EXISTS idx_engineer_location_logs_created ON engineer_locati
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions (UserID);
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_engineer ON push_subscriptions (EngineerID);
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_role ON push_subscriptions (Role);
+CREATE INDEX IF NOT EXISTS idx_planned_visits_date ON planned_visits (VisitDate);
+CREATE INDEX IF NOT EXISTS idx_planned_visits_engineer ON planned_visits (AssignedEngineer);
+CREATE INDEX IF NOT EXISTS idx_planned_visits_customer ON planned_visits (CustomerID);
+CREATE INDEX IF NOT EXISTS idx_customer_visit_rules_customer ON customer_visit_rules (CustomerID);
+CREATE INDEX IF NOT EXISTS idx_customer_visit_rules_engineer ON customer_visit_rules (AssignedEngineer);

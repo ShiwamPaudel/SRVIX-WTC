@@ -25,6 +25,10 @@ export type LeaveRequestStatus = "Pending" | "Approved" | "Rejected";
 
 export type Priority = "Low" | "Medium" | "High" | "Critical";
 
+export type PlannerPlanType = "General Visit" | "Scheduled Visit" | "Ticket";
+
+export type PlannerStatus = "Planned" | "Done" | "Missed" | "Cancelled";
+
 export type Customer = {
   CustomerID: string;
   NameOfCustomer: string;
@@ -246,6 +250,35 @@ export type PushSubscriptionRecord = {
   UserAgent: string;
   CreatedAt: string;
   LastSeenAt: string;
+};
+
+export type PlannedVisit = {
+  PlanID: string;
+  PlanType: PlannerPlanType;
+  CustomerID: string;
+  MachineID: string;
+  PMSID: string;
+  TicketID: string;
+  AssignedEngineer: string;
+  VisitDate: string;
+  Status: PlannerStatus;
+  Remarks: string;
+  CreatedBy: string;
+  CreatedAt: string;
+  UpdatedAt: string;
+};
+
+export type CustomerVisitRule = {
+  RuleID: string;
+  CustomerID: string;
+  FrequencyDays: string;
+  AssignedEngineer: string;
+  StartDate: string;
+  LastGeneratedDate: string;
+  ActiveStatus: string;
+  Remarks: string;
+  CreatedAt: string;
+  UpdatedAt: string;
 };
 
 export type TicketWithRelations = Ticket & {

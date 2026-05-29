@@ -4,6 +4,7 @@ import { turso } from "@/lib/turso/client";
 import type {
   AppUser,
   ContractRecord,
+  CustomerVisitRule,
   Customer,
   DeviceModel,
   Engineer,
@@ -12,6 +13,7 @@ import type {
   LeaveRequest,
   Machine,
   NotificationRecord,
+  PlannedVisit,
   PMSSchedule,
   PushSubscriptionRecord,
   Ticket,
@@ -32,7 +34,9 @@ type TableName =
   | "users"
   | "notifications"
   | "push_subscriptions"
-  | "leave_requests";
+  | "leave_requests"
+  | "planned_visits"
+  | "customer_visit_rules";
 
 type DbRecord = Record<string, unknown>;
 
@@ -191,6 +195,33 @@ const columns = {
     "CreatedAt",
     "LastSeenAt",
   ],
+  planned_visits: [
+    "PlanID",
+    "PlanType",
+    "CustomerID",
+    "MachineID",
+    "PMSID",
+    "TicketID",
+    "AssignedEngineer",
+    "VisitDate",
+    "Status",
+    "Remarks",
+    "CreatedBy",
+    "CreatedAt",
+    "UpdatedAt",
+  ],
+  customer_visit_rules: [
+    "RuleID",
+    "CustomerID",
+    "FrequencyDays",
+    "AssignedEngineer",
+    "StartDate",
+    "LastGeneratedDate",
+    "ActiveStatus",
+    "Remarks",
+    "CreatedAt",
+    "UpdatedAt",
+  ],
   leave_requests: [
     "LeaveRequestID",
     "EngineerID",
@@ -220,6 +251,8 @@ const idColumns = {
   notifications: "NotificationID",
   push_subscriptions: "SubscriptionID",
   leave_requests: "LeaveRequestID",
+  planned_visits: "PlanID",
+  customer_visit_rules: "RuleID",
 } satisfies Record<TableName, string>;
 
 function quote(identifier: string) {
@@ -462,6 +495,30 @@ export const dataService = {
   },
   async pushSubscriptions() {
     return readTable<PushSubscriptionRecord>("push_subscriptions", "LastSeenAt");
+  },
+  async plannedVisits() {
+    return readTable<PlannedVisit>("planned_visits", "VisitDate");
+  },
+  async plannedVisit(planId: string) {
+    return readById<PlannedVisit>("planned_visits", planId);
+  },
+  async createPlannedVisit(plan: PlannedVisit) {
+    return insertRecord<PlannedVisit>("planned_visits", plan);
+  },
+  async updatePlannedVisit(planId: string, patch: Partial<PlannedVisit>) {
+    return updateRecord<PlannedVisit>("planned_visits", planId, patch);
+  },
+  async customerVisitRules() {
+    return readTable<CustomerVisitRule>("customer_visit_rules", "StartDate");
+  },
+  async customerVisitRule(ruleId: string) {
+    return readById<CustomerVisitRule>("customer_visit_rules", ruleId);
+  },
+  async createCustomerVisitRule(rule: CustomerVisitRule) {
+    return insertRecord<CustomerVisitRule>("customer_visit_rules", rule);
+  },
+  async updateCustomerVisitRule(ruleId: string, patch: Partial<CustomerVisitRule>) {
+    return updateRecord<CustomerVisitRule>("customer_visit_rules", ruleId, patch);
   },
   async pushSubscriptionsForUser(userId: string) {
     return readWhere<PushSubscriptionRecord>("push_subscriptions", "UserID", userId, "LastSeenAt");

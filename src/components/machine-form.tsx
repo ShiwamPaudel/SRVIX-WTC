@@ -129,15 +129,6 @@ export function MachineForm({ customers, deviceModels }: { customers: Customer[]
             onChange={(event) => setWarrantyYears(event.target.value)}
           />
         </label>
-        <label className="space-y-2">
-          <span className="text-sm font-medium text-slate-700">Status</span>
-          <SelectNative name="Status" defaultValue="Operational">
-            <option>Operational</option>
-            <option>Attention</option>
-            <option>Down</option>
-            <option>Inactive</option>
-          </SelectNative>
-        </label>
         <label className="space-y-2 lg:col-span-2">
           <span className="text-sm font-medium text-slate-700">Photo URL override</span>
           <Input name="ImageURL" placeholder="Optional public image URL" />

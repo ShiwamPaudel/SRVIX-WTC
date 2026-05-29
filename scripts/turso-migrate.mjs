@@ -58,6 +58,11 @@ await client.execute("CREATE INDEX IF NOT EXISTS idx_notifications_role ON notif
 await client.execute("CREATE INDEX IF NOT EXISTS idx_leave_requests_engineer ON leave_requests (EngineerID)");
 await client.execute("CREATE INDEX IF NOT EXISTS idx_leave_requests_status ON leave_requests (Status)");
 await client.execute("CREATE INDEX IF NOT EXISTS idx_leave_requests_date ON leave_requests (LeaveDate)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_planned_visits_date ON planned_visits (VisitDate)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_planned_visits_engineer ON planned_visits (AssignedEngineer)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_planned_visits_customer ON planned_visits (CustomerID)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_customer_visit_rules_customer ON customer_visit_rules (CustomerID)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_customer_visit_rules_engineer ON customer_visit_rules (AssignedEngineer)");
 
 await client.execute("UPDATE tickets SET TicketStatus = 'Closed' WHERE TicketStatus IN ('Resolved', 'Closed')");
 await client.execute("UPDATE tickets SET TicketStatus = 'Pending' WHERE TicketStatus <> 'Closed'");

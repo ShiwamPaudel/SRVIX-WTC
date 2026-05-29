@@ -19,14 +19,6 @@ type MachineWithContext = Machine & {
   ticketCount: number;
 };
 
-function statusVariant(status: string): "green" | "amber" | "rose" | "slate" {
-  const normalized = status.toLowerCase();
-  if (normalized.includes("operational") || normalized.includes("active")) return "green";
-  if (normalized.includes("attention") || normalized.includes("service")) return "amber";
-  if (normalized.includes("down") || normalized.includes("inactive")) return "rose";
-  return "slate";
-}
-
 function MachinePhoto({ machine }: { machine: Machine }) {
   if (machine.ImageURL) {
     return (
@@ -51,7 +43,7 @@ function MachinePhoto({ machine }: { machine: Machine }) {
 export default async function MachinesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; customer?: string; status?: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const params = await searchParams;
   const session = await auth();
@@ -101,7 +93,6 @@ export default async function MachinesPage({
       machine.Model,
       machine.SerialNumber,
       machine.ContractType,
-      machine.Status,
     ]
       .join(" ")
       .toLowerCase();
@@ -221,16 +212,13 @@ export default async function MachinesPage({
                     <MachinePhoto machine={machine} />
                   </div>
                   <div className="space-y-4 p-4">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h3 className="text-base font-semibold text-slate-950">
-                          {machine.DeviceName || "Unnamed device"}
-                        </h3>
-                        <p className="text-sm text-slate-500">
-                          {[machine.Brand, machine.Model, machine.SerialNumber].filter(Boolean).join(" - ")}
-                        </p>
-                      </div>
-                      <Badge variant={statusVariant(machine.Status)}>{machine.Status || "Unknown"}</Badge>
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-950">
+                        {machine.DeviceName || "Unnamed device"}
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        {[machine.Brand, machine.Model, machine.SerialNumber].filter(Boolean).join(" - ")}
+                      </p>
                     </div>
 
                     <div className="grid gap-2 text-sm sm:grid-cols-2">

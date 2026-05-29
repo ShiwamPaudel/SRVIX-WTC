@@ -5,11 +5,11 @@ import { auth, signOut } from "@/auth";
 import {
   ClipboardCheck,
   CalendarCheck,
+  CalendarDays,
   Cpu,
   FileText,
   LayoutDashboard,
   LogOut,
-  Menu,
   MapPinned,
   Settings,
   UserCircle,
@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MobileNavMenu } from "@/components/mobile-nav-menu";
 import { NotificationPanel } from "@/components/notification-panel";
 import { isAdmin } from "@/lib/permissions";
 
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tickets", label: "Tickets", icon: Ticket },
   { href: "/machines", label: "Machines", icon: Cpu },
+  { href: "/planner", label: "Planner", icon: CalendarDays },
   { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
   { href: "/contracts", label: "Contracts", icon: FileText, adminOnly: true },
   { href: "/engineers", label: "Engineers", icon: Users, adminOnly: true },
@@ -85,49 +87,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             <div className="hidden lg:block" />
             <div className="flex shrink-0 items-center gap-2 lg:hidden">
               <NotificationPanel />
-              <details className="relative">
-                <summary className="flex size-10 cursor-pointer list-none items-center justify-center rounded-md border border-slate-200 bg-white text-[#12384f] shadow-sm transition hover:bg-[#f7fbff] [&::-webkit-details-marker]:hidden">
-                  <Menu className="size-5" />
-                </summary>
-                <div className="absolute right-0 top-12 z-30 flex h-[calc(100dvh-5.5rem)] w-[min(21rem,calc(100vw-2rem))] flex-col rounded-md border border-slate-200 bg-white p-3 shadow-xl">
-                  <div className="border-b border-slate-100 px-2 pb-3">
-                    <p className="truncate text-sm font-semibold text-[#12384f]">{session.user.name ?? "Profile"}</p>
-                    <p className="mt-1 text-xs font-medium text-slate-500">{session.user.role}</p>
-                  </div>
-                  <nav className="mt-3 flex-1 space-y-1 overflow-y-auto">
-                    {visibleNavItems.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-[#e8f7ff] hover:text-[#12384f]"
-                      >
-                        <item.icon className="size-4 text-[#38b6ff]" />
-                        {item.label}
-                      </Link>
-                    ))}
-                    <Link
-                      href="/profile"
-                      className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-[#e8f7ff] hover:text-[#12384f]"
-                    >
-                      <UserCircle className="size-4 text-[#38b6ff]" />
-                      Profile
-                    </Link>
-                  </nav>
-                  <div className="mt-3 border-t border-slate-100 pt-3">
-                    <form
-                      action={async () => {
-                        "use server";
-                        await signOut({ redirectTo: "/login" });
-                      }}
-                    >
-                      <Button variant="secondary" size="sm" className="w-full justify-center">
-                        <LogOut className="size-4" />
-                        Sign out
-                      </Button>
-                    </form>
-                  </div>
-                </div>
-              </details>
+              <MobileNavMenu userName={session.user.name} role={session.user.role} />
             </div>
             <div className="hidden items-center gap-2 lg:flex">
               <NotificationPanel />

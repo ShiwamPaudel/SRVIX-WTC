@@ -84,7 +84,6 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
           <CardContent className="space-y-3 pt-5">
             <Info label="Installation date" value={formatDate(machine.InstallationDate)} />
             <Info label="Warranty expiry" value={formatDate(machine.WarrantyExpiry)} />
-            <Info label="Status" value={machine.Status || "Unknown"} />
             <div>
               <p className="text-sm font-medium text-slate-500">Current contract</p>
               <div className="mt-1">
