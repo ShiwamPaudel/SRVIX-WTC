@@ -57,6 +57,7 @@ export function CustomerForm() {
           <option>Hospital</option>
           <option>Laboratory</option>
           <option>Medical College</option>
+          <option>Clinic</option>
           <option>Hotel</option>
           <option>Distributor</option>
           <option>Other</option>
