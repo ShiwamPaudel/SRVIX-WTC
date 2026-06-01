@@ -2,17 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/permissions";
 import { compactId, uniqueCompactId } from "@/lib/utils";
+import { machineCoverage } from "@/lib/coverage";
 import { dataService } from "@/lib/turso/service";
 import { sendNotification } from "@/lib/notifications";
 import { notifyEngineerTicketAssigned } from "@/lib/push-notifications";
 import type { Ticket } from "@/types/service";
-
-function warrantyStatus(expiry?: string) {
-  if (!expiry) return "Unknown";
-  const date = new Date(`${expiry}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  return date >= new Date() ? "Under Warranty" : "Warranty Expired";
-}
 
 function hasAttachment(value?: string) {
   return Boolean(
@@ -47,14 +41,10 @@ export async function POST(request: Request) {
   const machine = machines.find((item) => item.MachineID === body.MachineID);
   const customerId = machine?.CustomerID ?? body.CustomerID ?? "";
   const customer = customers.find((item) => item.CustomerID === customerId);
-  const activeContract = contracts
-    .filter((contract) => contract.InstallationID === machine?.InstallationID)
-    .filter((contract) => {
-      const end = new Date(`${contract.ContractEnd}T00:00:00`);
-      return !Number.isNaN(end.getTime()) && end >= new Date() && contract.Status !== "Expired";
-    })
-    .sort((a, b) => new Date(b.ContractEnd).getTime() - new Date(a.ContractEnd).getTime())[0];
-  const computedWarrantyStatus = warrantyStatus(machine?.WarrantyExpiry);
+  const coverage = machineCoverage(
+    machine?.WarrantyExpiry ?? "",
+    contracts.filter((contract) => contract.InstallationID === machine?.InstallationID),
+  );
 
   const ticket: Ticket = {
     TicketID: uniqueCompactId("TKT", tickets.map((item) => item.TicketID)),
@@ -70,16 +60,8 @@ export async function POST(request: Request) {
     Description: body.ProblemDescription ?? "",
     ServiceType: body.ServiceType ?? "Breakdown (OnSite Addressed)",
     Priority: "Medium",
-    ContractType: activeContract
-      ? activeContract.ContractType === "AMC"
-        ? "Under AMC"
-        : activeContract.ContractType === "CMC"
-          ? "CMC"
-          : "RRC"
-      : computedWarrantyStatus === "Under Warranty"
-        ? "Under Warranty"
-        : "Out of Warranty",
-    WarrantyStatus: computedWarrantyStatus,
+    ContractType: coverage.contractType,
+    WarrantyStatus: coverage.warrantyStatus,
     AssignedEngineer: body.AssignedEngineer ?? "",
     TicketAcceptedAt: "",
     TicketAcceptedBy: "",

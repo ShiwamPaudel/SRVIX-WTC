@@ -7,6 +7,7 @@ import { ContractBadge, StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { contractLifecycleStatus } from "@/lib/coverage";
 import { formatDate } from "@/lib/utils";
 import { isAdmin } from "@/lib/permissions";
 import { dataService } from "@/lib/turso/service";
@@ -149,20 +150,24 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
         <Card>
           <CardHeader><CardTitle>Contract History</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {machineContracts.map((contract) => (
-              <div key={contract.ContractID} className="rounded-md border border-slate-200 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-[#12384f]">{contract.ContractType}</p>
-                    <p className="text-sm text-slate-500">{contract.Remarks || "No remarks"}</p>
+            {machineContracts.map((contract) => {
+              const status = contractLifecycleStatus(contract);
+
+              return (
+                <div key={contract.ContractID} className="rounded-md border border-slate-200 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-[#12384f]">{contract.ContractType}</p>
+                      <p className="text-sm text-slate-500">{contract.Remarks || "No remarks"}</p>
+                    </div>
+                    <Badge variant={status === "Active" ? "green" : "slate"}>{status}</Badge>
                   </div>
-                  <Badge variant={contract.Status === "Active" ? "green" : "slate"}>{contract.Status}</Badge>
+                  <p className="mt-2 text-sm text-slate-600">
+                    {formatDate(contract.ContractStart)} to {formatDate(contract.ContractEnd)}
+                  </p>
                 </div>
-                <p className="mt-2 text-sm text-slate-600">
-                  {formatDate(contract.ContractStart)} to {formatDate(contract.ContractEnd)}
-                </p>
-              </div>
-            ))}
+              );
+            })}
             {!machineContracts.length ? <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">No contract history found.</p> : null}
           </CardContent>
         </Card>

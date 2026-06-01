@@ -4,21 +4,8 @@ import { isAdmin } from "@/lib/permissions";
 import { dataService } from "@/lib/turso/service";
 import { notifyEngineerTicketAssigned } from "@/lib/push-notifications";
 import { compactId, uniqueCompactId } from "@/lib/utils";
-import type { ContractRecord, Ticket } from "@/types/service";
-
-function ticketContractType(contract?: ContractRecord, warrantyStatus?: string) {
-  if (contract?.ContractType === "AMC") return "Under AMC";
-  if (contract?.ContractType === "CMC") return "CMC";
-  if (contract?.ContractType === "RRC") return "RRC";
-  return warrantyStatus === "Under Warranty" ? "Under Warranty" : "Out of Warranty";
-}
-
-function warrantyStatus(expiry?: string) {
-  if (!expiry) return "Unknown";
-  const date = new Date(`${expiry}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  return date >= new Date() ? "Under Warranty" : "Warranty Expired";
-}
+import { machineCoverage } from "@/lib/coverage";
+import type { Ticket } from "@/types/service";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ pmsId: string }> }) {
   const session = await auth();
@@ -46,14 +33,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ pm
   if (!machine) return NextResponse.json({ error: "Linked machine was not found" }, { status: 400 });
 
   const customer = customers.find((item) => item.CustomerID === pms.CustomerID || item.CustomerID === machine.CustomerID);
-  const activeContract = contracts
-    .filter((contract) => contract.InstallationID === machine.InstallationID)
-    .filter((contract) => {
-      const end = new Date(`${contract.ContractEnd}T00:00:00`);
-      return !Number.isNaN(end.getTime()) && end >= new Date() && contract.Status !== "Expired";
-    })
-    .sort((a, b) => new Date(b.ContractEnd).getTime() - new Date(a.ContractEnd).getTime())[0];
-  const computedWarrantyStatus = warrantyStatus(machine.WarrantyExpiry);
+  const coverage = machineCoverage(
+    machine.WarrantyExpiry,
+    contracts.filter((contract) => contract.InstallationID === machine.InstallationID),
+  );
   const pmsNumber = pms.PMSNumber || "";
   const customerName = customer?.NameOfCustomer || customer?.HospitalName || machine.NameOfCustomer || "";
   const now = new Date().toISOString();
@@ -72,8 +55,8 @@ export async function POST(_request: Request, { params }: { params: Promise<{ pm
     Description: `Scheduled preventive maintenance due on ${pms.DueDate}.`,
     ServiceType: "PMS",
     Priority: "Medium",
-    ContractType: ticketContractType(activeContract, computedWarrantyStatus),
-    WarrantyStatus: computedWarrantyStatus,
+    ContractType: coverage.contractType,
+    WarrantyStatus: coverage.warrantyStatus,
     AssignedEngineer: pms.AssignedEngineer,
     TicketAcceptedAt: "",
     TicketAcceptedBy: "",

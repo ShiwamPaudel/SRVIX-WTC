@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { compareDateValues } from "@/lib/coverage";
 import { isAdmin } from "@/lib/permissions";
 import { formatDate } from "@/lib/utils";
 import { dataService } from "@/lib/turso/service";
@@ -53,7 +54,7 @@ export default async function ContractsPage() {
     .map<ContractMachine | null>((machine) => {
       const customer = customerById.get(machine.CustomerID);
       const machineContracts = (contractsByInstallation.get(machine.InstallationID ?? "") ?? [])
-        .sort((a, b) => new Date(b.ContractEnd).getTime() - new Date(a.ContractEnd).getTime());
+        .sort((a, b) => compareDateValues(b.ContractEnd, a.ContractEnd));
       const latestContract = machineContracts[0];
       const expiryValue = latestContract?.ContractEnd || machine.WarrantyExpiry;
       const expiryDate = parseDate(expiryValue);
@@ -72,12 +73,12 @@ export default async function ContractsPage() {
     .filter((row): row is ContractMachine => row != null)
     .sort((a, b) => a.expiryDate.getTime() - b.expiryDate.getTime());
 
-  const expired = rows.filter((row) => row.expiryDate < today);
+  const expired = rows.filter((row) => compareDateValues(row.expiryLabel, today) < 0);
   const expiringSoon = rows.filter((row) => {
     const days = daysUntil(row.expiryDate, today);
     return days >= 0 && days <= 30;
   });
-  const active = rows.filter((row) => row.expiryDate >= today && !expiringSoon.includes(row));
+  const active = rows.filter((row) => compareDateValues(row.expiryLabel, today) >= 0 && !expiringSoon.includes(row));
 
   return (
     <div className="space-y-5">

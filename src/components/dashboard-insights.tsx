@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { compareDateValues, isContractActive } from "@/lib/coverage";
 import type { ContractRecord, Engineer, PMSSchedule, Ticket } from "@/types/service";
 
 const colors = ["#0284c7", "#059669", "#f59e0b", "#e11d48", "#64748b", "#7c3aed"];
@@ -88,9 +89,8 @@ export function DashboardInsights({
     else agingData[3].value += 1;
   });
   const contractWatch = contracts
-    .map((contract) => ({ ...contract, endDate: parseDate(contract.ContractEnd) }))
-    .filter((contract) => contract.endDate && contract.Status !== "Expired")
-    .sort((a, b) => a.endDate!.getTime() - b.endDate!.getTime())
+    .filter((contract) => isContractActive(contract, now))
+    .sort((a, b) => compareDateValues(a.ContractEnd, b.ContractEnd))
     .slice(0, 5);
   const liveEngineers = engineers.filter((engineer) => {
     const updated = parseDate(engineer.LastLocationUpdate);

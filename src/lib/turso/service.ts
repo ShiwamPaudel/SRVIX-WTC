@@ -1,5 +1,6 @@
 import "server-only";
 
+import { machineCoverage } from "@/lib/coverage";
 import { turso } from "@/lib/turso/client";
 import type {
   AppUser,
@@ -361,7 +362,9 @@ function normalizeEngineer(record: Engineer) {
   };
 }
 
-function installationToMachine(record: Installation, model?: DeviceModel, contractType: string = "Under Warranty") {
+function installationToMachine(record: Installation, model?: DeviceModel, contracts: ContractRecord[] = []) {
+  const coverage = machineCoverage(record.WarrantyExpiry, contracts);
+
   return {
     MachineID: record.InstallationID,
     InstallationID: record.InstallationID,
@@ -377,9 +380,9 @@ function installationToMachine(record: Installation, model?: DeviceModel, contra
     InstallationDate: record.InstallationDate,
     WarrantyYears: record.WarrantyYears,
     WarrantyExpiry: record.WarrantyExpiry,
-    ContractType: contractType,
-    ContractStart: record.InstallationDate,
-    ContractEnd: record.WarrantyExpiry,
+    ContractType: coverage.contractType,
+    ContractStart: coverage.startDate || record.InstallationDate,
+    ContractEnd: coverage.endDate || record.WarrantyExpiry,
     PMSFrequency: model?.PMSFrequency || "",
     PMSIntervalDays: model?.PMSFrequency || "",
     LastPMS: "",
@@ -437,11 +440,19 @@ export const dataService = {
     return readTable<ContractRecord>("contracts", "ContractEnd");
   },
   async machines() {
-    const [installations, models] = await Promise.all([this.installations(), this.deviceModels()]);
+    const [installations, models, contracts] = await Promise.all([this.installations(), this.deviceModels(), this.contracts()]);
+    const contractsByInstallation = contracts.reduce<Map<string, ContractRecord[]>>((grouped, contract) => {
+      const group = grouped.get(contract.InstallationID) ?? [];
+      group.push(contract);
+      grouped.set(contract.InstallationID, group);
+      return grouped;
+    }, new Map());
+
     return installations.map((installation) =>
       installationToMachine(
         installation,
         models.find((model) => model.ModelID === installation.ModelID || model.Model === installation.Model),
+        contractsByInstallation.get(installation.InstallationID) ?? [],
       ),
     );
   },
