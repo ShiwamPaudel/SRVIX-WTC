@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { PlannerCalendar } from "@/components/planner-calendar";
 import { isAdmin } from "@/lib/permissions";
+import { activateDuePlannerTickets } from "@/lib/planner-tickets";
 import { dataService } from "@/lib/turso/service";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +11,7 @@ export default async function PlannerPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
+  await activateDuePlannerTickets();
   const userIsAdmin = isAdmin(session.user.role);
   const [customers, engineers, machines, pmsSchedule, plannedVisits, visitRules, tickets] = await Promise.all([
     dataService.customers(),

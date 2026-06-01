@@ -17,7 +17,6 @@ import type {
   Engineer,
   Machine,
   PlannedVisit,
-  PlannerPlanType,
   PlannerStatus,
   PMSSchedule,
   Ticket,
@@ -26,7 +25,7 @@ import type {
 type PlannerEvent = {
   id: string;
   source: "pms" | "plan" | "rule" | "ticket";
-  type: "PMS" | PlannerPlanType;
+  type: "PMS" | "Ticket" | "General Visit";
   date: string;
   customerId: string;
   machineId?: string;
@@ -40,7 +39,6 @@ type PlannerEvent = {
   ticketId?: string;
 };
 
-const planTypes: PlannerPlanType[] = ["General Visit", "Scheduled Visit", "Ticket"];
 const planStatuses: PlannerStatus[] = ["Planned", "Done", "Missed", "Cancelled"];
 const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -129,7 +127,6 @@ export function PlannerCalendar({
   const [planCustomer, setPlanCustomer] = useState(customers[0]?.CustomerID ?? "");
   const [planMachine, setPlanMachine] = useState("");
   const [planEngineer, setPlanEngineer] = useState(engineers[0]?.EngineerID ?? "");
-  const [planType, setPlanType] = useState<PlannerPlanType>("General Visit");
   const [planRemarks, setPlanRemarks] = useState("");
   const [ruleCustomer, setRuleCustomer] = useState(customers[0]?.CustomerID ?? "");
   const [ruleEngineer, setRuleEngineer] = useState("");
@@ -163,20 +160,22 @@ export function PlannerCalendar({
         ticketId: pms.TicketID,
       };
     });
-    const planEvents: PlannerEvent[] = plannedVisits.map((plan) => ({
-      id: `plan-${plan.PlanID}`,
-      source: "plan",
-      type: plan.PlanType,
-      date: plan.VisitDate,
-      customerId: plan.CustomerID,
-      machineId: plan.MachineID,
-      engineerId: plan.AssignedEngineer,
-      status: plan.Status,
-      title: plan.PlanType,
-      detail: plan.Remarks || "Planned visit",
-      planId: plan.PlanID,
-      ticketId: plan.TicketID,
-    }));
+    const planEvents: PlannerEvent[] = plannedVisits
+      .filter((plan) => !plan.TicketID)
+      .map((plan) => ({
+        id: `plan-${plan.PlanID}`,
+        source: "plan",
+        type: "Ticket",
+        date: plan.VisitDate,
+        customerId: plan.CustomerID,
+        machineId: plan.MachineID,
+        engineerId: plan.AssignedEngineer,
+        status: plan.Status,
+        title: "Ticket",
+        detail: plan.Remarks || "Planned visit",
+        planId: plan.PlanID,
+        ticketId: plan.TicketID,
+      }));
     const ticketEvents: PlannerEvent[] = tickets
       .filter((ticket) => ticket.VisitDate)
       .map((ticket) => ({
@@ -251,14 +250,13 @@ export function PlannerCalendar({
         await postJson(
           "/api/planner/plans",
           {
-            PlanType: planType,
             CustomerID: planCustomer,
             MachineID: planMachine,
             AssignedEngineer: planEngineer,
             VisitDate: selectedDate,
             Remarks: planRemarks,
           },
-          "Plan added",
+          "Ticket planned",
         );
       } catch (error) {
         toast.error("Could not add plan", { description: error instanceof Error ? error.message : undefined });
@@ -365,8 +363,8 @@ export function PlannerCalendar({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-7 border-l border-t border-slate-200 text-center text-xs font-semibold uppercase text-slate-500">
-              {weekDays.map((day) => (
-                <div key={day} className="border-b border-r border-slate-200 bg-slate-50 px-2 py-2">
+              {weekDays.map((day, index) => (
+                <div key={day} className={cn("border-b border-r border-slate-200 bg-slate-50 px-2 py-2", (index === 0 || index === 6) && "bg-rose-50/70 text-rose-700")}>
                   {day}
                 </div>
               ))}
@@ -375,6 +373,7 @@ export function PlannerCalendar({
                 const dayEvents = eventsByDate.get(key) ?? [];
                 const isCurrentMonth = monthKey(date) === monthKey(month);
                 const isSelected = key === selectedDate;
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
                 return (
                   <button
                     key={key}
@@ -382,6 +381,7 @@ export function PlannerCalendar({
                     onClick={() => setSelectedDate(key)}
                     className={cn(
                       "min-h-28 border-b border-r border-slate-200 bg-white p-2 text-left align-top transition hover:bg-[#f4fbff]",
+                      isWeekend && "bg-rose-50/30 hover:bg-rose-50/50",
                       !isCurrentMonth && "bg-slate-50 text-slate-400",
                       isSelected && "ring-2 ring-inset ring-sky-400",
                     )}
@@ -551,14 +551,9 @@ export function PlannerCalendar({
         {canAdmin ? (
           <Card>
             <CardHeader>
-              <CardTitle>Add Plan</CardTitle>
+              <CardTitle>Add Ticket Plan</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <SelectNative value={planType} onChange={(event) => setPlanType(event.target.value as PlannerPlanType)}>
-                {planTypes.map((type) => (
-                  <option key={type}>{type}</option>
-                ))}
-              </SelectNative>
               <Input type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} />
               <SelectNative value={planCustomer} onChange={(event) => {
                 setPlanCustomer(event.target.value);
@@ -589,7 +584,7 @@ export function PlannerCalendar({
               <Textarea value={planRemarks} onChange={(event) => setPlanRemarks(event.target.value)} placeholder="Remarks" />
               <Button type="button" onClick={createPlan} disabled={isPending} className="w-full justify-center">
                 <Save className="size-4" />
-                Save plan
+                Save ticket plan
               </Button>
             </CardContent>
           </Card>

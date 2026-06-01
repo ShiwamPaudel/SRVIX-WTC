@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/permissions";
+import { activateDuePlannerTickets } from "@/lib/planner-tickets";
 import { sendNotification } from "@/lib/notifications";
 import { dataService } from "@/lib/turso/service";
 import type { NotificationRecord, UserRole } from "@/types/service";
@@ -20,6 +21,7 @@ export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  await activateDuePlannerTickets();
   const notifications = await dataService.notifications();
   const visible = notifications
     .filter((notification) => canViewNotification(notification, session.user))

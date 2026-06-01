@@ -11,6 +11,7 @@ import { SelectNative } from "@/components/ui/select";
 import { contractTypes, serviceTypes, ticketStatuses } from "@/lib/constants";
 import { getTicketsWithRelations } from "@/lib/data";
 import { isAdmin } from "@/lib/permissions";
+import { activateDuePlannerTickets } from "@/lib/planner-tickets";
 import { dataService } from "@/lib/turso/service";
 
 export default async function TicketsPage({
@@ -27,6 +28,7 @@ export default async function TicketsPage({
   }>;
 }) {
   const session = await auth();
+  await activateDuePlannerTickets();
   const userIsAdmin = isAdmin(session?.user.role);
   const isEngineerView = session?.user.role === "Engineer";
   const params = await searchParams;

@@ -9,6 +9,7 @@ export const serviceTypes: ServiceType[] = [
   "Calibration",
   "Demo",
   "Training",
+  "Planned Visit",
   "Emergency Visit",
 ];
 

@@ -17,6 +17,7 @@ export type ServiceType =
   | "Calibration"
   | "Demo"
   | "Training"
+  | "Planned Visit"
   | "Emergency Visit";
 
 export type TicketStatus = "Pending" | "Closed";

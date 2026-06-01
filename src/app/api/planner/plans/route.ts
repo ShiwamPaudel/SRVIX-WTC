@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/permissions";
+import { buildPlannerTicket, createPlannerTicket, plannerActivationDue } from "@/lib/planner-tickets";
 import { dataService } from "@/lib/turso/service";
 import { compactId } from "@/lib/utils";
 import type { PlannedVisit, PlannerPlanType, PlannerStatus } from "@/types/service";
 
-const planTypes: PlannerPlanType[] = ["General Visit", "Scheduled Visit", "Ticket"];
 const statuses: PlannerStatus[] = ["Planned", "Done", "Missed", "Cancelled"];
 
 export async function POST(request: Request) {
@@ -15,7 +15,6 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json()) as Partial<PlannedVisit>;
-  const planType = planTypes.includes(body.PlanType as PlannerPlanType) ? (body.PlanType as PlannerPlanType) : "General Visit";
   const customerId = String(body.CustomerID ?? "").trim();
   const visitDate = String(body.VisitDate ?? "").trim();
   const assignedEngineer = String(body.AssignedEngineer ?? "").trim();
@@ -24,13 +23,23 @@ export async function POST(request: Request) {
   }
 
   const now = new Date().toISOString();
+  const [customers, machines, contracts, tickets] = await Promise.all([
+    dataService.customers(),
+    dataService.machines(),
+    dataService.contracts(),
+    dataService.tickets(),
+  ]);
+  const customer = customers.find((item) => item.CustomerID === customerId);
+  const machineId = String(body.MachineID ?? "").trim();
+  const machine = machines.find((item) => item.MachineID === machineId || item.InstallationID === machineId);
+  const active = plannerActivationDue(visitDate);
   const plan: PlannedVisit = {
     PlanID: compactId("PLN"),
-    PlanType: planType,
+    PlanType: "Ticket" as PlannerPlanType,
     CustomerID: customerId,
-    MachineID: String(body.MachineID ?? "").trim(),
+    MachineID: machineId,
     PMSID: "",
-    TicketID: String(body.TicketID ?? "").trim(),
+    TicketID: "",
     AssignedEngineer: assignedEngineer,
     VisitDate: visitDate,
     Status: "Planned",
@@ -39,9 +48,20 @@ export async function POST(request: Request) {
     CreatedAt: now,
     UpdatedAt: now,
   };
+  const ticket = buildPlannerTicket({
+    plan,
+    customer,
+    machine,
+    contracts,
+    existingTickets: tickets,
+    openedBy: session.user.name ?? session.user.email ?? "Admin",
+    active,
+  });
+  plan.TicketID = ticket.TicketID;
 
+  await createPlannerTicket(ticket, active);
   const plannedVisit = await dataService.createPlannedVisit(plan);
-  return NextResponse.json({ plannedVisit }, { status: 201 });
+  return NextResponse.json({ plannedVisit, ticket }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
