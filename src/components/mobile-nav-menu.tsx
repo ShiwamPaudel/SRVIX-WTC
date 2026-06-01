@@ -3,37 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import {
-  CalendarCheck,
-  CalendarDays,
-  ClipboardCheck,
-  Cpu,
-  FileText,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Settings,
-  Ticket,
-  UserCircle,
-  Users,
-  X,
-  MapPinned,
-} from "lucide-react";
+import { LogOut, Menu, UserCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { visibleNavItems } from "@/components/nav-items";
 import type { UserRole } from "@/types/service";
-
-const mobileNavItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/tickets", label: "Tickets", icon: Ticket },
-  { href: "/machines", label: "Machines", icon: Cpu },
-  { href: "/planner", label: "Planner", icon: CalendarDays },
-  { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
-  { href: "/contracts", label: "Contracts", icon: FileText, adminOnly: true },
-  { href: "/engineers", label: "Engineers", icon: Users, adminOnly: true },
-  { href: "/pms", label: "PMS", icon: CalendarCheck, adminOnly: true },
-  { href: "/maps", label: "Live Map", icon: MapPinned },
-  { href: "/settings", label: "Settings", icon: Settings, adminOnly: true },
-];
 
 export function MobileNavMenu({
   userName,
@@ -43,7 +16,7 @@ export function MobileNavMenu({
   role?: UserRole;
 }) {
   const [open, setOpen] = useState(false);
-  const visibleItems = mobileNavItems.filter((item) => !item.adminOnly || role === "Admin");
+  const visibleItems = visibleNavItems(role);
 
   return (
     <div className="relative">

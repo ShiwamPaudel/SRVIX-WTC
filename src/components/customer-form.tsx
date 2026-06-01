@@ -55,9 +55,9 @@ export function CustomerForm() {
         <span className="text-sm font-medium text-slate-700">Customer type</span>
         <SelectNative name="CustomerType" defaultValue="Hospital">
           <option>Hospital</option>
-          <option>Clinic</option>
+          <option>Laboratory</option>
           <option>Medical College</option>
-          <option>Diagnostic Center</option>
+          <option>Hotel</option>
           <option>Distributor</option>
           <option>Other</option>
         </SelectNative>

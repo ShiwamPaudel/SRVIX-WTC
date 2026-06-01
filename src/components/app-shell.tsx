@@ -2,43 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import { auth, signOut } from "@/auth";
-import {
-  ClipboardCheck,
-  CalendarCheck,
-  CalendarDays,
-  Cpu,
-  FileText,
-  LayoutDashboard,
-  LogOut,
-  MapPinned,
-  Settings,
-  UserCircle,
-  Ticket,
-  Users,
-} from "lucide-react";
+import { LogOut, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
+import { visibleNavItems } from "@/components/nav-items";
 import { NotificationPanel } from "@/components/notification-panel";
-import { isAdmin } from "@/lib/permissions";
-
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/tickets", label: "Tickets", icon: Ticket },
-  { href: "/machines", label: "Machines", icon: Cpu },
-  { href: "/planner", label: "Planner", icon: CalendarDays },
-  { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
-  { href: "/contracts", label: "Contracts", icon: FileText, adminOnly: true },
-  { href: "/engineers", label: "Engineers", icon: Users, adminOnly: true },
-  { href: "/pms", label: "PMS", icon: CalendarCheck, adminOnly: true },
-  { href: "/maps", label: "Live Map", icon: MapPinned },
-  { href: "/settings", label: "Settings", icon: Settings, adminOnly: true },
-];
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
-  const userIsAdmin = isAdmin(session.user.role);
-  const visibleNavItems = navItems.filter((item) => !item.adminOnly || userIsAdmin);
+  const items = visibleNavItems(session.user.role);
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[272px_1fr]">
@@ -57,7 +30,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           <nav className="flex-1 space-y-1 p-4">
-            {visibleNavItems.map((item) => (
+            {items.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
