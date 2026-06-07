@@ -45,6 +45,18 @@ export default async function AttendancePage() {
           detail: `${customerName}${ticket.TicketTitle ? ` - ${ticket.TicketTitle}` : ""} accepted`,
         };
       }),
+    ...tickets
+      .filter((ticket) => ticket.AssignedEngineer && ticket.TicketStatus === "Closed" && allowedEngineerIds.has(ticket.AssignedEngineer))
+      .map((ticket) => {
+        const date = dayKey(ticket.CompletionDate || ticket.LastUpdated);
+        const customerName = customerById.get(ticket.CustomerID)?.HospitalName || ticket.NameOfCustomer || "Customer not linked";
+        return {
+          engineerId: ticket.AssignedEngineer,
+          date,
+          type: "Ticket" as const,
+          detail: `${customerName}${ticket.TicketTitle ? ` - ${ticket.TicketTitle}` : ""} Closed`,
+        };
+      }),
     ...locationLogs
       .filter((log) => allowedEngineerIds.has(log.EngineerID))
       .map((log) => ({
@@ -70,8 +82,8 @@ export default async function AttendancePage() {
         <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Attendance</h1>
         <p className="text-sm text-slate-500">
           {canViewAll
-            ? "Monthly attendance by engineer. A day is present when an assigned ticket was accepted that day or the engineer sent a location."
-            : "Your attendance only. A day is present when you accepted an assigned ticket or sent a location."}
+            ? "Monthly attendance by engineer. A day is present when an assigned ticket was accepted or closed that day, or the engineer sent a location."
+            : "Your attendance only. A day is present when you accepted or closed an assigned ticket, or sent a location."}
         </p>
       </div>
       {session?.user.engineerId ? <LeaveRequestForm /> : null}
