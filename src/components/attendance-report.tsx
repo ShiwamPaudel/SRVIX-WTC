@@ -18,6 +18,7 @@ type AttendanceEngineer = {
 type AttendanceEvent = {
   engineerId: string;
   date: string;
+  sortAt?: string;
   type: "Ticket" | "Location" | "Leave";
   detail: string;
 };
@@ -44,6 +45,12 @@ function dateRange(from: string, to: string) {
 function eventLabel(events: AttendanceEvent[]) {
   if (!events.length) return "-";
   return events.map((event) => `${event.type} - ${event.detail}`).join("; ");
+}
+
+function eventTime(value?: string) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 export function AttendanceReport({
@@ -74,6 +81,9 @@ export function AttendanceReport({
     events.forEach((event) => {
       const key = `${event.date}:${event.engineerId}`;
       map.set(key, [...(map.get(key) ?? []), event]);
+    });
+    map.forEach((cellEvents) => {
+      cellEvents.sort((a, b) => eventTime(a.sortAt) - eventTime(b.sortAt));
     });
     return map;
   }, [events]);
