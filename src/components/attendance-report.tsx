@@ -68,6 +68,45 @@ function eventDescription(event: AttendanceEvent) {
   return `${event.type} - ${event.detail}${time ? ` (${time})` : ""}`;
 }
 
+function actionClass(value: string) {
+  if (value.toLowerCase() === "accepted") return "bg-sky-50 text-sky-700 ring-sky-100";
+  if (value.toLowerCase() === "closed") return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  if (value === "In") return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  if (value === "Out") return "bg-amber-50 text-amber-700 ring-amber-100";
+  return "bg-slate-50 text-slate-700 ring-slate-100";
+}
+
+function ActionText({ children }: { children: string }) {
+  return <span className={`rounded px-1.5 py-0.5 font-semibold ring-1 ${actionClass(children)}`}>{children}</span>;
+}
+
+function EventDetail({ event }: { event: AttendanceEvent }) {
+  if (event.type === "Ticket") {
+    const match = event.detail.match(/^(.*)\s(accepted|closed)$/i);
+    if (match) {
+      const action = match[2].toLowerCase() === "closed" ? "Closed" : "Accepted";
+      return (
+        <>
+          {match[1]} <ActionText>{action}</ActionText>
+        </>
+      );
+    }
+  }
+
+  if (event.type === "Location") {
+    const match = event.detail.match(/^(.*)\s-\s(In|Out)$/);
+    if (match) {
+      return (
+        <>
+          {match[1]} - <ActionText>{match[2]}</ActionText>
+        </>
+      );
+    }
+  }
+
+  return <>{event.detail}</>;
+}
+
 export function AttendanceReport({
   engineers,
   events,
@@ -212,7 +251,7 @@ export function AttendanceReport({
                             {isLeave ? <Badge variant="blue">Leave</Badge> : null}
                             {cellEvents.map((event, index) => (
                               <p key={`${event.type}-${index}`} className="text-sm text-slate-700">
-                                <span className="font-semibold text-slate-950">{event.type}</span> - {event.detail}
+                                <span className="font-semibold text-slate-950">{event.type}</span> - <EventDetail event={event} />
                                 {eventTimeLabel(event.sortAt) ? ` (${eventTimeLabel(event.sortAt)})` : ""}
                               </p>
                             ))}
