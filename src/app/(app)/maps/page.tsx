@@ -73,8 +73,7 @@ export default async function MapsPage() {
       </div>
       {session?.user.engineerId ? (
         <Card>
-          <CardHeader><CardTitle>Location Check In</CardTitle></CardHeader>
-          <CardContent>
+          <CardContent className="p-5">
             <LiveLocationTracker engineerId={session.user.engineerId} />
           </CardContent>
         </Card>

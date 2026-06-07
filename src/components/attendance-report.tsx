@@ -44,13 +44,28 @@ function dateRange(from: string, to: string) {
 
 function eventLabel(events: AttendanceEvent[]) {
   if (!events.length) return "-";
-  return events.map((event) => `${event.type} - ${event.detail}`).join("; ");
+  return events.map((event) => eventDescription(event)).join("; ");
 }
 
 function eventTime(value?: string) {
   if (!value) return 0;
   const time = new Date(value).getTime();
   return Number.isNaN(time) ? 0 : time;
+}
+
+function eventTimeLabel(value?: string) {
+  if (!value || !value.includes(":")) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function eventDescription(event: AttendanceEvent) {
+  const time = eventTimeLabel(event.sortAt);
+  return `${event.type} - ${event.detail}${time ? ` (${time})` : ""}`;
 }
 
 export function AttendanceReport({
@@ -198,6 +213,7 @@ export function AttendanceReport({
                             {cellEvents.map((event, index) => (
                               <p key={`${event.type}-${index}`} className="text-sm text-slate-700">
                                 <span className="font-semibold text-slate-950">{event.type}</span> - {event.detail}
+                                {eventTimeLabel(event.sortAt) ? ` (${eventTimeLabel(event.sortAt)})` : ""}
                               </p>
                             ))}
                           </div>
