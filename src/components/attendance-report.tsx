@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectNative } from "@/components/ui/select";
-import { formatDate, toDateInputValue } from "@/lib/utils";
+import { APP_TIME_ZONE, formatDate, toDateInputValue } from "@/lib/utils";
 
 type AttendanceEngineer = {
   id: string;
@@ -58,6 +58,7 @@ function eventTimeLabel(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat("en", {
+    timeZone: APP_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
