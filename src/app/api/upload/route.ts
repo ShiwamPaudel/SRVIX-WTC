@@ -18,16 +18,18 @@ export async function POST(request: Request) {
   let context: ReportStorageContext | undefined;
   if (ticketId) {
     const ticket = await getTicket(ticketId);
-    context = ticket
-      ? {
-          ticketId: ticket.TicketID,
-          customerName: ticket.customer?.HospitalName || ticket.NameOfCustomer,
-          machineModel: ticket.machine?.Model || ticket.Model,
-          machineSerial: ticket.machine?.SerialNumber || ticket.MachineID || ticket.InstallationID,
-          ticketTitle: ticket.TicketTitle,
-          ticketDate: ticket.TicketDate || ticket.Date || ticket.VisitDate,
-        }
-      : { ticketId };
+    if (!ticket) return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    if (session.user.role === "Engineer" && session.user.engineerId !== ticket.AssignedEngineer) {
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+    }
+    context = {
+      ticketId: ticket.TicketID,
+      customerName: ticket.customer?.HospitalName || ticket.NameOfCustomer,
+      machineModel: ticket.machine?.Model || ticket.Model,
+      machineSerial: ticket.machine?.SerialNumber || ticket.MachineID || ticket.InstallationID,
+      ticketTitle: ticket.TicketTitle,
+      ticketDate: ticket.TicketDate || ticket.Date || ticket.VisitDate,
+    };
   }
 
   try {

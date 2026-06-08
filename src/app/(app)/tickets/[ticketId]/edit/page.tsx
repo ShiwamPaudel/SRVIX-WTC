@@ -16,7 +16,10 @@ export default async function EditTicketPage({ params }: { params: Promise<{ tic
     dataService.engineers(),
   ]);
   if (!ticket) notFound();
-  if (session?.user.role === "Engineer") redirect(`/tickets/${ticket.TicketID}`);
+  if (session?.user.role === "Engineer") {
+    if (session.user.engineerId !== ticket.AssignedEngineer) notFound();
+    redirect(`/tickets/${ticket.TicketID}`);
+  }
 
   return (
     <div className="space-y-5">

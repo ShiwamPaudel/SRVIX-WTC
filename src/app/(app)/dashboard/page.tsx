@@ -5,7 +5,6 @@ import { DashboardCards } from "@/components/dashboard-cards";
 import { DashboardInsights } from "@/components/dashboard-insights";
 import { KPICharts } from "@/components/kpi-charts";
 import { TicketCard } from "@/components/ticket-card";
-import { ActivityTimeline } from "@/components/activity-timeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardMetrics, joinTicketsWithRelations } from "@/lib/data";
@@ -16,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const session = await auth();
   const userIsAdmin = isAdmin(session?.user.role);
-  const metrics = await getDashboardMetrics();
+  const metrics = await getDashboardMetrics(session?.user.role, session?.user.engineerId);
   const tickets = joinTicketsWithRelations(metrics);
   const recentTickets = tickets.slice(0, 3);
 
@@ -50,28 +49,16 @@ export default async function DashboardPage() {
           contracts={metrics.contracts}
         />
       ) : null}
-      <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
-        <div className="space-y-4">
-          {userIsAdmin ? <KPICharts tickets={metrics.tickets} engineers={metrics.engineers} /> : null}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Tickets</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {recentTickets.map((ticket) => <TicketCard key={ticket.TicketID} ticket={ticket} />)}
-            </CardContent>
-          </Card>
-        </div>
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Activity Timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ActivityTimeline logs={metrics.logs.slice(0, 5)} />
-            </CardContent>
-          </Card>
-        </div>
+      <div className="space-y-4">
+        {userIsAdmin ? <KPICharts tickets={metrics.tickets} engineers={metrics.engineers} /> : null}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Tickets</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentTickets.map((ticket) => <TicketCard key={ticket.TicketID} ticket={ticket} />)}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

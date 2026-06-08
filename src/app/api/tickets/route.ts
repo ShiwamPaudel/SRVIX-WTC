@@ -18,8 +18,16 @@ function hasAttachment(value?: string) {
 }
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const tickets = await dataService.tickets();
-  return NextResponse.json({ tickets });
+  const visibleTickets = session.user.role === "Engineer"
+    ? session.user.engineerId
+      ? tickets.filter((ticket) => ticket.AssignedEngineer === session.user.engineerId)
+      : []
+    : tickets;
+  return NextResponse.json({ tickets: visibleTickets });
 }
 
 export async function POST(request: Request) {

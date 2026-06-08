@@ -16,10 +16,19 @@ function hasAttachment(value?: string) {
   );
 }
 
+function canViewTicket(user: { role?: string | null; engineerId?: string | null }, ticket: Ticket) {
+  if (user.role === "Engineer") return Boolean(user.engineerId && user.engineerId === ticket.AssignedEngineer);
+  return true;
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ ticketId: string }> }) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { ticketId } = await params;
   const ticket = await getTicket(ticketId);
   if (!ticket) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!canViewTicket(session.user, ticket)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ticket });
 }
 
@@ -31,6 +40,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ti
   const body = (await request.json()) as Partial<Ticket> & { AcceptTicket?: boolean };
   const existingTicket = await dataService.ticket(ticketId);
   if (!existingTicket) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!canViewTicket(session.user, existingTicket)) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (body.AcceptTicket) {
     if (existingTicket.TicketStatus === "Closed") {
       return NextResponse.json({ error: "Closed tickets cannot be accepted." }, { status: 400 });

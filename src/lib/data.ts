@@ -71,10 +71,11 @@ export async function getTicketsWithRelations(role?: UserRole, engineerId?: stri
     dataService.engineers(),
     dataService.ticketLogs(),
   ]);
-  const allowedTickets =
-    role === "Engineer" && engineerId
+  const allowedTickets = role === "Engineer"
+    ? engineerId
       ? tickets.filter((ticket) => ticket.AssignedEngineer === engineerId)
-      : tickets;
+      : []
+    : tickets;
 
   return joinTicketsWithRelations({ customers, machines, tickets: allowedTickets, engineers, logs });
 }
@@ -91,12 +92,34 @@ export async function getTicket(ticketId: string) {
   return joinTicketsWithRelations({ customers, machines, tickets: [ticket], engineers, logs })[0];
 }
 
-export async function getDashboardMetrics() {
+export async function getDashboardMetrics(role?: UserRole, engineerId?: string) {
   const dataset = await getServiceDataset();
-  const open = dataset.tickets.filter((ticket) => ticket.TicketStatus !== "Closed").length;
-  const closed = dataset.tickets.filter((ticket) => ticket.TicketStatus === "Closed").length;
-  const pendingPms = dataset.pmsSchedule.filter((pms) => pms.Status !== "Completed").length;
+  const visibleTickets = role === "Engineer"
+    ? engineerId
+      ? dataset.tickets.filter((ticket) => ticket.AssignedEngineer === engineerId)
+      : []
+    : dataset.tickets;
+  const visibleTicketIds = new Set(visibleTickets.map((ticket) => ticket.TicketID));
+  const visibleLogs = role === "Engineer"
+    ? dataset.logs.filter((log) => visibleTicketIds.has(log.TicketID))
+    : dataset.logs;
+  const visiblePmsSchedule = role === "Engineer"
+    ? engineerId
+      ? dataset.pmsSchedule.filter((pms) => pms.AssignedEngineer === engineerId)
+      : []
+    : dataset.pmsSchedule;
+
+  const pendingPms = visiblePmsSchedule.filter((pms) => pms.Status !== "Completed").length;
   const activeEngineers = dataset.engineers.filter((engineer) => engineer.ActiveStatus !== "Inactive").length;
 
-  return { ...dataset, open, closed, pendingPms, activeEngineers };
+  return {
+    ...dataset,
+    tickets: visibleTickets,
+    logs: visibleLogs,
+    pmsSchedule: visiblePmsSchedule,
+    open: visibleTickets.filter((ticket) => ticket.TicketStatus !== "Closed").length,
+    closed: visibleTickets.filter((ticket) => ticket.TicketStatus === "Closed").length,
+    pendingPms,
+    activeEngineers,
+  };
 }

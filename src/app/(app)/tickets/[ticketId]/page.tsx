@@ -21,6 +21,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
   const session = await auth();
   const ticket = await getTicket(ticketId);
   if (!ticket) notFound();
+  if (session?.user.role === "Engineer" && session.user.engineerId !== ticket.AssignedEngineer) notFound();
 
   const [pmsSchedule, tickets] = await Promise.all([dataService.pmsSchedule(), dataService.tickets()]);
   const machineId = ticket.machine?.MachineID || ticket.MachineID || ticket.InstallationID || "";
@@ -34,7 +35,12 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
   const upcomingPms = relatedPms.find((pms) => pms.Status !== "Completed" && (!pms.DueDate || pms.DueDate >= today)) ??
     relatedPms.find((pms) => pms.Status !== "Completed");
   const machineTickets = tickets
-    .filter((item) => (item.MachineID || item.InstallationID) === machineId && item.TicketID !== ticket.TicketID)
+    .filter((item) => {
+      const sameMachine = (item.MachineID || item.InstallationID) === machineId && item.TicketID !== ticket.TicketID;
+      if (!sameMachine) return false;
+      if (session?.user.role === "Engineer") return item.AssignedEngineer === session.user.engineerId;
+      return true;
+    })
     .sort((a, b) => (b.TicketDate || b.Date || "").localeCompare(a.TicketDate || a.Date || ""));
   const openMachineTickets = machineTickets.filter((item) => item.TicketStatus !== "Closed");
   const canAcceptTicket =
