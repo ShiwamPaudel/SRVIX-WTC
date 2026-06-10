@@ -175,9 +175,9 @@ export default async function PMSPage({
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">PMS Management</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950">PMS</h1>
         <p className="text-sm text-slate-500">
-          Monthly PMS workload, overdue alerts, upcoming visits, and machine-level maintenance plans.
+          Never Miss a PMS - Track them with Tickets.
         </p>
       </div>
 

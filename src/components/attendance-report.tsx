@@ -195,7 +195,7 @@ export function AttendanceReport({
           <>
             {canExportDailyPdf ? (
               <>
-                <FilterField label="Daily PDF" className="min-w-40">
+                <FilterField label="Daily Report" className="min-w-40">
                   <Input
                     className={filterInputClass}
                     type="date"
@@ -206,13 +206,13 @@ export function AttendanceReport({
                 </FilterField>
                 <Button type="button" variant="secondary" onClick={exportDailyPdf} disabled={!dailyReportDate}>
                   <FileDown className="size-4" />
-                  Export PDF
+                  Export Daily Report PDF
                 </Button>
               </>
             ) : null}
             <Button type="button" variant="secondary" onClick={exportCsv} disabled={!days.length || !visibleEngineers.length}>
               <Download className="size-4" />
-              Export Excel CSV
+              Export CSV
             </Button>
           </>
         }

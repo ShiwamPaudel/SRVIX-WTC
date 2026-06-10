@@ -13,7 +13,7 @@ export default async function EngineersPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-[#12384f]">Engineers</h1>
-          <p className="text-sm text-slate-500">Engineer accounts, field capacity, and live GPS coordinates.</p>
+          <p className="text-sm text-slate-500">Engineer Accounts and Leave Requests Approval / Rejection</p>
         </div>
         <Button asChild>
           <Link href="/engineers/new">

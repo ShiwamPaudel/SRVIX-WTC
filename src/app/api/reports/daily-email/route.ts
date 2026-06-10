@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import { dailyReportEmailConfigStatus, sendDailyReportEmail } from "@/lib/daily-report-email";
+import { dailyReportEmailConfigStatus, sendDailyReportEmail, verifyDailyReportEmailSetup } from "@/lib/daily-report-email";
 
 export const runtime = "nodejs";
 
@@ -30,6 +30,11 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
+  if (url.searchParams.get("verify") === "1") {
+    const result = await verifyDailyReportEmailSetup();
+    return NextResponse.json({ result });
+  }
+
   const result = await sendDailyReportEmail(url.searchParams.get("date") ?? undefined);
   return NextResponse.json({ result });
 }

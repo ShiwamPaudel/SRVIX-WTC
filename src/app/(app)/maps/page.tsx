@@ -69,7 +69,7 @@ export default async function MapsPage() {
       <MapAutoRefresh />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Live Map</h1>
-        <p className="text-sm text-slate-500">Engineers appear on the map only when their latest location is less than 8 hours old.</p>
+        <p className="text-sm text-slate-500">The field force on the field as they should be.</p>
       </div>
       {session?.user.engineerId ? (
         <Card>
