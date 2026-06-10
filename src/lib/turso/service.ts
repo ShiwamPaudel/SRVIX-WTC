@@ -40,6 +40,7 @@ type TableName =
   | "customer_visit_rules";
 
 type DbRecord = Record<string, unknown>;
+type CachedValue = { expiresAt: number; value: unknown };
 
 const columns = {
   customers: [
@@ -256,12 +257,60 @@ const idColumns = {
   customer_visit_rules: "RuleID",
 } satisfies Record<TableName, string>;
 
+const READ_CACHE_TTL_MS = 5000;
+const READ_CACHE_MAX_ENTRIES = 80;
+const readCache = new Map<string, CachedValue>();
+
+const nonCachedTables = new Set<TableName>(["users", "push_subscriptions"]);
+
+function cloneRecord<T>(value: T) {
+  if (!value || typeof value !== "object") return value;
+  return { ...(value as Record<string, unknown>) } as T;
+}
+
+function cacheKey(sql: string, args: unknown[] = []) {
+  return JSON.stringify([sql, args]);
+}
+
+function getCached<T>(key: string) {
+  const cached = readCache.get(key);
+  if (!cached) return undefined;
+  if (cached.expiresAt <= Date.now()) {
+    readCache.delete(key);
+    return undefined;
+  }
+  if (Array.isArray(cached.value)) return cached.value.map((row) => cloneRecord(row)) as T;
+  return cloneRecord(cached.value as T);
+}
+
+function setCached(key: string, value: unknown) {
+  if (readCache.size >= READ_CACHE_MAX_ENTRIES) {
+    const oldestKey = readCache.keys().next().value;
+    if (oldestKey) readCache.delete(oldestKey);
+  }
+  readCache.set(key, {
+    expiresAt: Date.now() + READ_CACHE_TTL_MS,
+    value: Array.isArray(value) ? value.map((row) => cloneRecord(row)) : cloneRecord(value),
+  });
+}
+
+function clearReadCache() {
+  readCache.clear();
+}
+
 function quote(identifier: string) {
   return `"${identifier.replaceAll('"', '""')}"`;
 }
 
 function tableColumns(table: TableName) {
   return columns[table];
+}
+
+function tableColumn(table: TableName, column: string) {
+  if (!tableColumns(table).includes(column)) {
+    throw new Error(`Invalid column ${column} for ${table}`);
+  }
+  return column;
 }
 
 function rowToRecord(table: TableName, row: DbRecord) {
@@ -272,29 +321,56 @@ function rowToRecord(table: TableName, row: DbRecord) {
 }
 
 async function readTable<T>(table: TableName, orderBy?: string) {
+  const orderColumn = orderBy ? tableColumn(table, orderBy) : "";
   const sql = `SELECT ${tableColumns(table).map(quote).join(", ")} FROM ${table}${
-    orderBy ? ` ORDER BY ${quote(orderBy)}` : ""
+    orderColumn ? ` ORDER BY ${quote(orderColumn)}` : ""
   }`;
+  const key = cacheKey(sql);
+  if (!nonCachedTables.has(table)) {
+    const cached = getCached<T[]>(key);
+    if (cached) return cached;
+  }
   const result = await turso.execute(sql);
-  return result.rows.map((row) => rowToRecord(table, row as DbRecord)) as T[];
+  const rows = result.rows.map((row) => rowToRecord(table, row as DbRecord)) as T[];
+  if (!nonCachedTables.has(table)) setCached(key, rows);
+  return rows.map((row) => cloneRecord(row));
 }
 
 async function readById<T>(table: TableName, id: string) {
   const idColumn = idColumns[table];
+  const sql = `SELECT ${tableColumns(table).map(quote).join(", ")} FROM ${table} WHERE ${quote(idColumn)} = ? LIMIT 1`;
+  const args = [id];
+  const key = cacheKey(sql, args);
+  if (!nonCachedTables.has(table)) {
+    const cached = getCached<T | undefined>(key);
+    if (cached !== undefined) return cached;
+  }
   const result = await turso.execute({
-    sql: `SELECT ${tableColumns(table).map(quote).join(", ")} FROM ${table} WHERE ${quote(idColumn)} = ? LIMIT 1`,
-    args: [id],
+    sql,
+    args,
   });
   const row = result.rows[0];
-  return row ? (rowToRecord(table, row as DbRecord) as T) : undefined;
+  const record = row ? (rowToRecord(table, row as DbRecord) as T) : undefined;
+  if (!nonCachedTables.has(table)) setCached(key, record);
+  return record ? cloneRecord(record) : undefined;
 }
 
 async function readWhere<T>(table: TableName, column: string, value: string, orderBy?: string) {
-  const sql = `SELECT ${tableColumns(table).map(quote).join(", ")} FROM ${table} WHERE ${quote(column)} = ?${
-    orderBy ? ` ORDER BY ${quote(orderBy)}` : ""
+  const whereColumn = tableColumn(table, column);
+  const orderColumn = orderBy ? tableColumn(table, orderBy) : "";
+  const sql = `SELECT ${tableColumns(table).map(quote).join(", ")} FROM ${table} WHERE ${quote(whereColumn)} = ?${
+    orderColumn ? ` ORDER BY ${quote(orderColumn)}` : ""
   }`;
-  const result = await turso.execute({ sql, args: [value] });
-  return result.rows.map((row) => rowToRecord(table, row as DbRecord)) as T[];
+  const args = [value];
+  const key = cacheKey(sql, args);
+  if (!nonCachedTables.has(table)) {
+    const cached = getCached<T[]>(key);
+    if (cached) return cached;
+  }
+  const result = await turso.execute({ sql, args });
+  const rows = result.rows.map((row) => rowToRecord(table, row as DbRecord)) as T[];
+  if (!nonCachedTables.has(table)) setCached(key, rows);
+  return rows.map((row) => cloneRecord(row));
 }
 
 async function insertRecord<T>(table: TableName, record: DbRecord) {
@@ -308,6 +384,7 @@ async function insertRecord<T>(table: TableName, record: DbRecord) {
     args: values as string[],
   });
 
+  clearReadCache();
   return record as T;
 }
 
@@ -321,6 +398,7 @@ async function updateRecord<T>(table: TableName, id: string, patch: DbRecord) {
       sql: `UPDATE ${table} SET ${entries.map(([key]) => `${quote(key)} = ?`).join(", ")} WHERE ${quote(idColumn)} = ?`,
       args: [...entries.map(([, value]) => value ?? ""), id] as string[],
     });
+    clearReadCache();
   }
 
   const nextRecord = await readById<T>(table, id);
@@ -334,6 +412,7 @@ async function deleteRecord(table: TableName, id: string) {
     sql: `DELETE FROM ${table} WHERE ${quote(idColumn)} = ?`,
     args: [id],
   });
+  clearReadCache();
 }
 
 function normalizeCustomer(record: Customer) {

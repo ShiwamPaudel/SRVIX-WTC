@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarDays, Download } from "lucide-react";
+import { CalendarDays, Download, FileDown } from "lucide-react";
 import { FilterField, FilterSummary, FilterToolbar, filterInputClass, filterSelectClass } from "@/components/filter-toolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,15 +114,18 @@ export function AttendanceReport({
   defaultFrom,
   defaultTo,
   canChooseEngineer = false,
+  canExportDailyPdf = false,
 }: {
   engineers: AttendanceEngineer[];
   events: AttendanceEvent[];
   defaultFrom: string;
   defaultTo: string;
   canChooseEngineer?: boolean;
+  canExportDailyPdf?: boolean;
 }) {
   const [dateFrom, setDateFrom] = useState(defaultFrom);
   const [dateTo, setDateTo] = useState(defaultTo);
+  const [dailyReportDate, setDailyReportDate] = useState(defaultTo);
   const [engineerId, setEngineerId] = useState("");
 
   const visibleEngineers = useMemo(
@@ -174,6 +177,11 @@ export function AttendanceReport({
     URL.revokeObjectURL(url);
   }
 
+  function exportDailyPdf() {
+    const url = `/api/reports/daily-pdf?date=${encodeURIComponent(dailyReportDate)}`;
+    window.location.href = url;
+  }
+
   return (
     <div className="space-y-5">
       <FilterToolbar
@@ -184,10 +192,29 @@ export function AttendanceReport({
           </>
         }
         actions={
-          <Button type="button" variant="secondary" onClick={exportCsv} disabled={!days.length || !visibleEngineers.length}>
-            <Download className="size-4" />
-            Export Excel CSV
-          </Button>
+          <>
+            {canExportDailyPdf ? (
+              <>
+                <FilterField label="Daily PDF" className="min-w-40">
+                  <Input
+                    className={filterInputClass}
+                    type="date"
+                    value={dailyReportDate}
+                    onChange={(event) => setDailyReportDate(event.target.value)}
+                    aria-label="Daily PDF date"
+                  />
+                </FilterField>
+                <Button type="button" variant="secondary" onClick={exportDailyPdf} disabled={!dailyReportDate}>
+                  <FileDown className="size-4" />
+                  Export PDF
+                </Button>
+              </>
+            ) : null}
+            <Button type="button" variant="secondary" onClick={exportCsv} disabled={!days.length || !visibleEngineers.length}>
+              <Download className="size-4" />
+              Export Excel CSV
+            </Button>
+          </>
         }
       >
         <FilterField label="From">

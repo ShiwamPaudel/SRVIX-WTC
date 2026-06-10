@@ -16,12 +16,30 @@ function parseDate(value: string) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+const collator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
+
+function customerLabel(customer: Customer) {
+  return customer.NameOfCustomer || customer.HospitalName || "";
+}
+
+function modelLabel(model: DeviceModel) {
+  return model.Model || model.BrandName || "";
+}
+
 export function MachineForm({ customers, deviceModels }: { customers: Customer[]; deviceModels: DeviceModel[] }) {
   const router = useRouter();
   const [installationDate, setInstallationDate] = useState(new Date().toISOString().slice(0, 10));
   const [warrantyYears, setWarrantyYears] = useState("1");
   const [modelId, setModelId] = useState("");
 
+  const sortedCustomers = useMemo(
+    () => [...customers].sort((a, b) => collator.compare(customerLabel(a), customerLabel(b))),
+    [customers],
+  );
+  const sortedDeviceModels = useMemo(
+    () => [...deviceModels].sort((a, b) => collator.compare(modelLabel(a), modelLabel(b))),
+    [deviceModels],
+  );
   const selectedModel = deviceModels.find((model) => model.ModelID === modelId);
 
   const preview = useMemo(() => {
@@ -73,9 +91,9 @@ export function MachineForm({ customers, deviceModels }: { customers: Customer[]
           <span className="text-sm font-medium text-slate-700">Customer / institution</span>
           <SelectNative name="CustomerID" required>
             <option value="">Select customer</option>
-            {customers.map((customer) => (
+            {sortedCustomers.map((customer) => (
               <option key={customer.CustomerID} value={customer.CustomerID}>
-                {customer.NameOfCustomer || customer.HospitalName}
+                {customerLabel(customer)}
               </option>
             ))}
           </SelectNative>
@@ -88,9 +106,9 @@ export function MachineForm({ customers, deviceModels }: { customers: Customer[]
           <span className="text-sm font-medium text-slate-700">Device model</span>
           <SelectNative name="ModelID" required value={modelId} onChange={(event) => setModelId(event.target.value)}>
             <option value="">Select model</option>
-            {deviceModels.map((model) => (
+            {sortedDeviceModels.map((model) => (
               <option key={model.ModelID} value={model.ModelID}>
-                {model.Model}
+                {modelLabel(model)}
               </option>
             ))}
           </SelectNative>

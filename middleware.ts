@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { canAccessPath } from "@/lib/permissions";
 
-const publicRoutes = ["/login", "/api/auth"];
+const publicRoutes = ["/login", "/api/auth", "/api/reports/daily-email"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
