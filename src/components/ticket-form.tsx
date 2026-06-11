@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Clock3, Save } from "lucide-react";
 import { toast } from "sonner";
-import { serviceTypes, ticketStatuses } from "@/lib/constants";
+import { serviceReportRequiredForServiceType, serviceTypes, ticketStatuses } from "@/lib/constants";
 import { compactId } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,7 +62,7 @@ export function TicketForm({
       MachineID: ticket?.MachineID ?? initialMachine?.MachineID ?? "",
       TicketTitle: ticket?.TicketTitle ?? "",
       ProblemDescription: ticket?.ProblemDescription ?? "",
-      ServiceType: ticket?.ServiceType ?? "Breakdown (OnSite Addressed)",
+      ServiceType: ticket?.ServiceType ?? "Breakdown (On-site Addressed)",
       ContractType: ticket?.ContractType ?? initialMachine?.ContractType ?? "Under Warranty",
       AssignedEngineer: ticket?.AssignedEngineer ?? "",
       AssistedBy: ticket?.AssistedBy ?? "",
@@ -77,6 +77,7 @@ export function TicketForm({
   const customerId = form.watch("CustomerID");
   const machineId = form.watch("MachineID");
   const ticketStatus = form.watch("TicketStatus");
+  const serviceType = form.watch("ServiceType");
   const relatedMachines = useMemo(
     () => machines.filter((machine) => !customerId || machine.CustomerID === customerId),
     [customerId, machines],
@@ -106,7 +107,11 @@ export function TicketForm({
   }
 
   async function onSubmit(values: TicketFormValues) {
-    if (values.TicketStatus === "Closed" && !attachments.split(",").map((item) => item.trim()).filter(Boolean).length) {
+    if (
+      values.TicketStatus === "Closed" &&
+      serviceReportRequiredForServiceType(values.ServiceType) &&
+      !attachments.split(",").map((item) => item.trim()).filter(Boolean).length
+    ) {
       toast.error("Attach the service report before closing this ticket");
       return;
     }
@@ -257,6 +262,11 @@ export function TicketForm({
         </div>
         <UploadWidget
           initialUrls={attachments.split(",").map((item) => item.trim()).filter(Boolean)}
+          description={
+            serviceReportRequiredForServiceType(serviceType)
+              ? "PDFs and images are accepted. A service report is required before closing this ticket."
+              : "PDFs and images are accepted. A service report is optional for this service type."
+          }
           uploadContext={ticket ? { ticketId: ticket.TicketID } : undefined}
           onUploaded={(urls) => setAttachments(urls.join(", "))}
         />

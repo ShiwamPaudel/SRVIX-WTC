@@ -4,6 +4,7 @@ import { isAdmin } from "@/lib/permissions";
 import { compactId } from "@/lib/utils";
 import { getTicket } from "@/lib/data";
 import { dataService } from "@/lib/turso/service";
+import { serviceReportRequiredForServiceType } from "@/lib/constants";
 import { notifyAdminsTicketClosed, notifyEngineerTicketAssigned } from "@/lib/push-notifications";
 import type { Ticket } from "@/types/service";
 
@@ -90,7 +91,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ti
   if (!isAdmin(session.user.role) && body.AssignedEngineer != null && body.AssignedEngineer !== existingTicket.AssignedEngineer) {
     return NextResponse.json({ error: "Admin access required to assign engineers" }, { status: 403 });
   }
-  if (body.TicketStatus === "Closed" && !hasAttachment(body.AttachmentURLs || existingTicket.AttachmentURLs)) {
+  const serviceType = body.ServiceType ?? existingTicket.ServiceType;
+  if (body.TicketStatus === "Closed" && serviceReportRequiredForServiceType(serviceType) && !hasAttachment(body.AttachmentURLs || existingTicket.AttachmentURLs)) {
     return NextResponse.json({ error: "A service report attachment is required before closing a ticket." }, { status: 400 });
   }
   const normalizedPatch = {

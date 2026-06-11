@@ -78,7 +78,7 @@ export function UploadWidget({
           <p className="text-sm text-slate-500">{description}</p>
         </div>
         <label>
-          <input className="sr-only" type="file" accept={accept} capture="environment" multiple onChange={onChange} />
+          <input className="sr-only" type="file" accept={accept} multiple onChange={onChange} />
           <span className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-[#087fb6] px-4 text-sm font-medium text-white transition hover:bg-[#006da3]">
             {loading ? <UploadCloud className="size-4 animate-pulse" /> : accept.includes("pdf") ? <FileUp className="size-4" /> : <Camera className="size-4" />}
             {loading ? "Uploading..." : buttonLabel}

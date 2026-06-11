@@ -4,6 +4,7 @@ import { isAdmin } from "@/lib/permissions";
 import { compactId, uniqueCompactId } from "@/lib/utils";
 import { machineCoverage } from "@/lib/coverage";
 import { dataService } from "@/lib/turso/service";
+import { serviceReportRequiredForServiceType } from "@/lib/constants";
 import { sendNotification } from "@/lib/notifications";
 import { notifyEngineerTicketAssigned } from "@/lib/push-notifications";
 import type { Ticket } from "@/types/service";
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
   if (!isAdmin(session.user.role)) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
   const body = (await request.json()) as Partial<Ticket>;
-  if (body.TicketStatus === "Closed" && !hasAttachment(body.AttachmentURLs)) {
+  if (body.TicketStatus === "Closed" && serviceReportRequiredForServiceType(body.ServiceType) && !hasAttachment(body.AttachmentURLs)) {
     return NextResponse.json({ error: "A service report attachment is required before closing a ticket." }, { status: 400 });
   }
   const now = new Date().toISOString();
@@ -66,7 +67,7 @@ export async function POST(request: Request) {
     TicketTitle: body.TicketTitle ?? "",
     ProblemDescription: body.ProblemDescription ?? "",
     Description: body.ProblemDescription ?? "",
-    ServiceType: body.ServiceType ?? "Breakdown (OnSite Addressed)",
+    ServiceType: body.ServiceType ?? "Breakdown (On-site Addressed)",
     Priority: "Medium",
     ContractType: coverage.contractType,
     WarrantyStatus: coverage.warrantyStatus,

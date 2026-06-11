@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { serviceReportRequiredForServiceType } from "@/lib/constants";
 
 function hasAttachment(value?: string) {
   return Boolean(
@@ -20,11 +21,13 @@ function hasAttachment(value?: string) {
 export function TicketClosePanel({
   ticketId,
   attachmentUrls,
+  serviceType,
   canClose,
   isClosed,
 }: {
   ticketId: string;
   attachmentUrls?: string;
+  serviceType?: string;
   canClose: boolean;
   isClosed: boolean;
 }) {
@@ -32,9 +35,10 @@ export function TicketClosePanel({
   const [remarks, setRemarks] = useState("");
   const [saving, setSaving] = useState(false);
   const reportAttached = hasAttachment(attachmentUrls);
+  const reportRequired = serviceReportRequiredForServiceType(serviceType);
 
   async function closeTicket() {
-    if (!reportAttached) {
+    if (reportRequired && !reportAttached) {
       toast.error("Attach the service report before closing this ticket");
       return;
     }
@@ -77,10 +81,10 @@ export function TicketClosePanel({
           placeholder="Engineer remarks or resolution notes"
           disabled={!canClose || isClosed}
         />
-        {!reportAttached && !isClosed ? (
+        {reportRequired && !reportAttached && !isClosed ? (
           <p className="text-sm text-amber-700">Attach a service report before closing this ticket.</p>
         ) : null}
-        <Button type="button" onClick={closeTicket} disabled={!canClose || isClosed || !reportAttached || saving} className="w-full justify-center">
+        <Button type="button" onClick={closeTicket} disabled={!canClose || isClosed || (reportRequired && !reportAttached) || saving} className="w-full justify-center">
           <CheckCircle2 className="size-4" />
           {isClosed ? "Ticket Closed" : saving ? "Closing..." : "Close Ticket"}
         </Button>

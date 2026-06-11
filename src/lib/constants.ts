@@ -1,17 +1,24 @@
 import type { ContractType, ServiceType, TicketStatus, UserRole } from "@/types/service";
 
 export const serviceTypes: ServiceType[] = [
-  "Breakdown (OnSite Addressed)",
-  "Breakdown (On Call Addressed)",
-  "PMS",
+  "General Visit",
+  "Pre - Installation",
   "Installation",
-  "Pre-Installation",
-  "Calibration",
-  "Demo",
-  "Training",
-  "Planned Visit",
-  "Emergency Visit",
+  "Application Issue",
+  "Breakdown (On-site Addressed)",
+  "Breakdown (On-call Addressed)",
+  "PMS",
 ];
+
+const serviceReportOptionalTypes = new Set<string>([
+  "General Visit",
+  "Breakdown (On-call Addressed)",
+  "Breakdown (On Call Addressed)",
+]);
+
+export function serviceReportRequiredForServiceType(serviceType?: string) {
+  return !serviceReportOptionalTypes.has(serviceType ?? "");
+}
 
 export const ticketStatuses: TicketStatus[] = ["Pending", "Closed"];
 

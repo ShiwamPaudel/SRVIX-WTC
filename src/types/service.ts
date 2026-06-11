@@ -9,16 +9,13 @@ export type ContractType =
   | "Demo Unit";
 
 export type ServiceType =
-  | "Breakdown (OnSite Addressed)"
-  | "Breakdown (On Call Addressed)"
-  | "PMS"
+  | "General Visit"
+  | "Pre - Installation"
   | "Installation"
-  | "Pre-Installation"
-  | "Calibration"
-  | "Demo"
-  | "Training"
-  | "Planned Visit"
-  | "Emergency Visit";
+  | "Application Issue"
+  | "Breakdown (On-site Addressed)"
+  | "Breakdown (On-call Addressed)"
+  | "PMS";
 
 export type TicketStatus = "Pending" | "Closed";
 

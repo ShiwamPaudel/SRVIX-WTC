@@ -79,7 +79,7 @@ export function buildPlannerTicket({
     TicketTitle: title,
     ProblemDescription: plan.Remarks || `Planner visit scheduled for ${plan.VisitDate}.`,
     Description: plan.Remarks || `Planner visit scheduled for ${plan.VisitDate}.`,
-    ServiceType: "Planned Visit",
+    ServiceType: "General Visit",
     Priority: "Medium",
     ContractType: coverage.contractType,
     WarrantyStatus: coverage.warrantyStatus,

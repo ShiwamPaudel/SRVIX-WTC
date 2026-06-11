@@ -110,6 +110,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
           <TicketClosePanel
             ticketId={ticket.TicketID}
             attachmentUrls={ticket.AttachmentURLs}
+            serviceType={ticket.ServiceType}
             canClose={canCloseTicket}
             isClosed={ticket.TicketStatus === "Closed"}
           />
