@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SelectNative } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { serviceTypes } from "@/lib/constants";
 import { cn, addDays, formatDate, toDateInputValue } from "@/lib/utils";
 import type {
   Customer,
@@ -127,6 +128,7 @@ export function PlannerCalendar({
   const [planCustomer, setPlanCustomer] = useState(customers[0]?.CustomerID ?? "");
   const [planMachine, setPlanMachine] = useState("");
   const [planEngineer, setPlanEngineer] = useState(engineers[0]?.EngineerID ?? "");
+  const [planServiceType, setPlanServiceType] = useState("General Visit");
   const [planRemarks, setPlanRemarks] = useState("");
   const [ruleCustomer, setRuleCustomer] = useState(customers[0]?.CustomerID ?? "");
   const [ruleEngineer, setRuleEngineer] = useState("");
@@ -253,6 +255,7 @@ export function PlannerCalendar({
             CustomerID: planCustomer,
             MachineID: planMachine,
             AssignedEngineer: planEngineer,
+            ServiceType: planServiceType,
             VisitDate: selectedDate,
             Remarks: planRemarks,
           },
@@ -579,6 +582,11 @@ export function PlannerCalendar({
                   <option key={engineer.EngineerID} value={engineer.EngineerID}>
                     {engineer.EngineerName}
                   </option>
+                ))}
+              </SelectNative>
+              <SelectNative value={planServiceType} onChange={(event) => setPlanServiceType(event.target.value)}>
+                {serviceTypes.map((type) => (
+                  <option key={type}>{type}</option>
                 ))}
               </SelectNative>
               <Textarea value={planRemarks} onChange={(event) => setPlanRemarks(event.target.value)} placeholder="Remarks" />

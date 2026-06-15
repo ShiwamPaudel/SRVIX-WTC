@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/permissions";
+import { serviceTypes } from "@/lib/constants";
 import { buildPlannerTicket, createPlannerTicket, plannerActivationDue } from "@/lib/planner-tickets";
 import { dataService } from "@/lib/turso/service";
 import { compactId } from "@/lib/utils";
-import type { PlannedVisit, PlannerPlanType, PlannerStatus } from "@/types/service";
+import type { PlannedVisit, PlannerPlanType, PlannerStatus, ServiceType } from "@/types/service";
 
 const statuses: PlannerStatus[] = ["Planned", "Done", "Missed", "Cancelled"];
 
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
-  const body = (await request.json()) as Partial<PlannedVisit>;
+  const body = (await request.json()) as Partial<PlannedVisit> & { ServiceType?: string };
   const customerId = String(body.CustomerID ?? "").trim();
   const visitDate = String(body.VisitDate ?? "").trim();
   const assignedEngineer = String(body.AssignedEngineer ?? "").trim();
@@ -33,6 +34,10 @@ export async function POST(request: Request) {
   const machineId = String(body.MachineID ?? "").trim();
   const machine = machines.find((item) => item.MachineID === machineId || item.InstallationID === machineId);
   const active = plannerActivationDue(visitDate);
+  const requestedServiceType = String(body.ServiceType ?? "").trim();
+  const serviceType = serviceTypes.includes(requestedServiceType as ServiceType)
+    ? requestedServiceType as ServiceType
+    : "General Visit";
   const plan: PlannedVisit = {
     PlanID: compactId("PLN"),
     PlanType: "Ticket" as PlannerPlanType,
@@ -56,6 +61,7 @@ export async function POST(request: Request) {
     existingTickets: tickets,
     openedBy: session.user.name ?? session.user.email ?? "Admin",
     active,
+    serviceType,
   });
   plan.TicketID = ticket.TicketID;
 

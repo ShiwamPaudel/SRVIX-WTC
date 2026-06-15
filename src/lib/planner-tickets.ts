@@ -4,7 +4,7 @@ import { machineCoverage } from "@/lib/coverage";
 import { compactId, uniqueCompactId } from "@/lib/utils";
 import { dataService } from "@/lib/turso/service";
 import { notifyEngineerTicketAssigned } from "@/lib/push-notifications";
-import type { Customer, Machine, PlannedVisit, Ticket } from "@/types/service";
+import type { Customer, Machine, PlannedVisit, ServiceType, Ticket } from "@/types/service";
 
 export const plannerScheduledResponse = "Planner scheduled for 9 AM NPT";
 export const plannerActiveResponse = "Planner activated";
@@ -51,6 +51,7 @@ export function buildPlannerTicket({
   existingTickets,
   openedBy,
   active,
+  serviceType = "General Visit",
 }: {
   plan: PlannedVisit;
   customer?: Customer;
@@ -59,6 +60,7 @@ export function buildPlannerTicket({
   existingTickets: Ticket[];
   openedBy: string;
   active: boolean;
+  serviceType?: ServiceType;
 }): Ticket {
   const coverage = machineCoverage(
     machine?.WarrantyExpiry ?? "",
@@ -79,7 +81,7 @@ export function buildPlannerTicket({
     TicketTitle: title,
     ProblemDescription: plan.Remarks || `Planner visit scheduled for ${plan.VisitDate}.`,
     Description: plan.Remarks || `Planner visit scheduled for ${plan.VisitDate}.`,
-    ServiceType: "General Visit",
+    ServiceType: serviceType,
     Priority: "Medium",
     ContractType: coverage.contractType,
     WarrantyStatus: coverage.warrantyStatus,
