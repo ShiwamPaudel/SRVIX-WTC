@@ -116,11 +116,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ti
       Status: "Completed",
       CompletionDate: ticket.CompletionDate || new Date().toISOString().slice(0, 10),
       TicketID: ticket.TicketID,
+      AssignedEngineer: ticket.AssignedEngineer,
     });
   } else if (ticket.PMSID && ticket.TicketStatus !== "Closed") {
     await dataService.updatePMSSchedule(ticket.PMSID, {
       Status: "Scheduled",
       TicketID: ticket.TicketID,
+      AssignedEngineer: ticket.AssignedEngineer,
     });
   }
   await dataService.createTicketLog({

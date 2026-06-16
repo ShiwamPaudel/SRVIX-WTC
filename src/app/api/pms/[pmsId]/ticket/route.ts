@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/permissions";
-import { dataService } from "@/lib/turso/service";
-import { notifyEngineerTicketAssigned } from "@/lib/push-notifications";
-import { compactId, uniqueCompactId } from "@/lib/utils";
-import { machineCoverage } from "@/lib/coverage";
-import type { Ticket } from "@/types/service";
+import { createPMSTicket } from "@/lib/pms-tickets";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ pmsId: string }> }) {
   const session = await auth();
@@ -13,88 +9,14 @@ export async function POST(_request: Request, { params }: { params: Promise<{ pm
   if (!isAdmin(session.user.role)) return NextResponse.json({ error: "Admin access required" }, { status: 403 });
 
   const { pmsId } = await params;
-  const [pmsRows, tickets, machines, customers, contracts] = await Promise.all([
-    dataService.pmsSchedule(),
-    dataService.tickets(),
-    dataService.machines(),
-    dataService.customers(),
-    dataService.contracts(),
-  ]);
+  const result = await createPMSTicket(pmsId, {
+    openedBy: session.user.name ?? session.user.email ?? "System",
+  });
 
-  const pms = pmsRows.find((row) => row.PMSID === pmsId);
-  if (!pms) return NextResponse.json({ error: "PMS row not found" }, { status: 404 });
-
-  if (pms.TicketID) {
-    const existing = tickets.find((ticket) => ticket.TicketID === pms.TicketID);
-    if (existing) return NextResponse.json({ ticket: existing });
+  if (result.status === "skipped") {
+    const status = result.reason === "PMS row not found" ? 404 : 400;
+    return NextResponse.json({ error: result.reason }, { status });
   }
 
-  const machine = machines.find((item) => item.MachineID === pms.MachineID || item.InstallationID === pms.MachineID);
-  if (!machine) return NextResponse.json({ error: "Linked machine was not found" }, { status: 400 });
-
-  const customer = customers.find((item) => item.CustomerID === pms.CustomerID || item.CustomerID === machine.CustomerID);
-  const coverage = machineCoverage(
-    machine.WarrantyExpiry,
-    contracts.filter((contract) => contract.InstallationID === machine.InstallationID),
-  );
-  const pmsNumber = pms.PMSNumber || "";
-  const customerName = customer?.NameOfCustomer || customer?.HospitalName || machine.NameOfCustomer || "";
-  const now = new Date().toISOString();
-
-  const ticket: Ticket = {
-    TicketID: uniqueCompactId("TKT", tickets.map((item) => item.TicketID)),
-    TicketDate: now.slice(0, 10),
-    Date: now.slice(0, 10),
-    CustomerID: customer?.CustomerID ?? machine.CustomerID,
-    NameOfCustomer: customerName,
-    MachineID: machine.MachineID,
-    InstallationID: machine.InstallationID ?? machine.MachineID,
-    Model: machine.Model,
-    TicketTitle: `${pmsNumber ? `PMS No. ${pmsNumber}` : "PMS"} - ${machine.Model || machine.DeviceName} at ${customerName || "Customer"}`,
-    ProblemDescription: `Scheduled preventive maintenance due on ${pms.DueDate}.`,
-    Description: `Scheduled preventive maintenance due on ${pms.DueDate}.`,
-    ServiceType: "PMS",
-    Priority: "Medium",
-    ContractType: coverage.contractType,
-    WarrantyStatus: coverage.warrantyStatus,
-    AssignedEngineer: pms.AssignedEngineer,
-    TicketAcceptedAt: "",
-    TicketAcceptedBy: "",
-    AssistedBy: "",
-    TicketStatus: "Pending",
-    ResponseType: "Planned visit",
-    OpenedBy: session.user.name ?? session.user.email ?? "System",
-    EngineerRemarks: "",
-    Resolution: "",
-    VisitDate: pms.DueDate,
-    CompletionDate: "",
-    CustomerSignatureURL: "",
-    AttachmentURLs: "",
-    ClosureStatus: "Pending",
-    Latitude: customer?.Latitude || "",
-    Longitude: customer?.Longitude || "",
-    LastUpdated: now,
-    PMSID: pms.PMSID,
-    PMSNumber: pmsNumber,
-  };
-
-  await dataService.createTicket(ticket);
-  await dataService.updatePMSSchedule(pms.PMSID, {
-    TicketID: ticket.TicketID,
-    Status: pms.Status === "Completed" ? "Completed" : "Scheduled",
-  });
-  await dataService.createTicketLog({
-    LogID: compactId("LOG"),
-    TicketID: ticket.TicketID,
-    UpdatedBy: session.user.name ?? "System",
-    UpdateDate: now,
-    Status: ticket.TicketStatus,
-    Remarks: "PMS ticket created",
-    AttachmentURL: "",
-    Latitude: ticket.Latitude,
-    Longitude: ticket.Longitude,
-  });
-  await notifyEngineerTicketAssigned(ticket).catch((error) => console.warn("PMS ticket assignment push failed", error));
-
-  return NextResponse.json({ ticket }, { status: 201 });
+  return NextResponse.json({ ticket: result.ticket }, { status: result.status === "created" ? 201 : 200 });
 }

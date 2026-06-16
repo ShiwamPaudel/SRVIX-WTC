@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, CalendarCheck, CalendarClock, CheckCircle2, Clock3, X, Wrench } from "lucide-react";
+import { AlertTriangle, CalendarCheck, CalendarClock, CheckCircle2, Clock3, ExternalLink, X, Wrench } from "lucide-react";
 import { auth } from "@/auth";
 import { FilterField, FilterSummary, FilterToolbar, filterInputClass } from "@/components/filter-toolbar";
 import { LiveFilterForm } from "@/components/live-filter-form";
-import { PMSCreateTicketButton } from "@/components/pms-create-ticket-button";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -260,7 +259,7 @@ export default async function PMSPage({
                   <StatusBadge status={row.displayStatus} />
                 </div>
                 <div className="flex justify-start lg:justify-end">
-                  <PMSCreateTicketButton pmsId={row.PMSID} ticketId={row.TicketID} />
+                  <PMSTicketLink ticketId={row.ticket?.TicketID} />
                 </div>
               </div>
             ))}
@@ -335,7 +334,7 @@ export default async function PMSPage({
                     </p>
                     <p className="text-xs text-slate-500">Completed {formatDate(row.CompletionDate || row.DueDate)}</p>
                   </div>
-                  <PMSCreateTicketButton pmsId={row.PMSID} ticketId={row.TicketID} />
+                  <PMSTicketLink ticketId={row.ticket?.TicketID} />
                 </div>
               ))}
             {!filteredRows.some((row) => row.isCompleted) ? (
@@ -359,7 +358,7 @@ export default async function PMSPage({
                 </div>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={row.displayStatus} />
-                  <PMSCreateTicketButton pmsId={row.PMSID} ticketId={row.TicketID} />
+                  <PMSTicketLink ticketId={row.ticket?.TicketID} />
                 </div>
               </div>
             ))}
@@ -368,6 +367,19 @@ export default async function PMSPage({
         </Card>
       </div>
     </div>
+  );
+}
+
+function PMSTicketLink({ ticketId }: { ticketId?: string }) {
+  if (!ticketId) return <span className="text-xs font-medium text-slate-500">Auto ticket pending</span>;
+
+  return (
+    <Button asChild size="sm" variant="secondary">
+      <Link href={`/tickets/${ticketId}`}>
+        <ExternalLink className="size-4" />
+        Open Ticket
+      </Link>
+    </Button>
   );
 }
 

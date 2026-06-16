@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/pms/auto-create-tickets",
+      "schedule": "15 3 * * *"
+    },
+    {
       "path": "/api/reports/daily-email",
       "schedule": "15 14 * * *"
     }
