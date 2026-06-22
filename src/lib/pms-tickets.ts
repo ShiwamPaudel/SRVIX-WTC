@@ -1,6 +1,7 @@
 import "server-only";
 
 import { machineCoverage } from "@/lib/coverage";
+import { notifyEngineerTicketAssigned } from "@/lib/push-notifications";
 import { dataService } from "@/lib/turso/service";
 import { APP_TIME_ZONE, compactId, uniqueCompactId } from "@/lib/utils";
 import type { ContractRecord, Customer, Machine, PMSSchedule, Ticket } from "@/types/service";
@@ -103,7 +104,7 @@ async function createTicketFromPMS(
     Priority: "Medium",
     ContractType: coverage.contractType,
     WarrantyStatus: coverage.warrantyStatus,
-    AssignedEngineer: "",
+    AssignedEngineer: pms.AssignedEngineer || "",
     TicketAcceptedAt: "",
     TicketAcceptedBy: "",
     AssistedBy: "",
@@ -141,6 +142,9 @@ async function createTicketFromPMS(
     Latitude: ticket.Latitude,
     Longitude: ticket.Longitude,
   });
+  if (ticket.AssignedEngineer) {
+    await notifyEngineerTicketAssigned(ticket).catch((error) => console.warn("PMS ticket notification failed", error));
+  }
 
   return { status: "created", ticket, pmsId: pms.PMSID };
 }
