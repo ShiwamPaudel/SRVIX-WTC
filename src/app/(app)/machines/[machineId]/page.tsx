@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { contractLifecycleStatus } from "@/lib/coverage";
+import { previousRecordsForMachine } from "@/lib/previous-records";
 import { formatDate } from "@/lib/utils";
 import { isAdmin } from "@/lib/permissions";
 import { dataService } from "@/lib/turso/service";
@@ -30,13 +31,14 @@ function MachinePhoto({ machine }: { machine: Machine }) {
 
 export default async function MachineDetailPage({ params }: { params: Promise<{ machineId: string }> }) {
   const { machineId } = await params;
-  const [session, machines, customers, tickets, pmsSchedule, contracts] = await Promise.all([
+  const [session, machines, customers, tickets, pmsSchedule, contracts, previousRecords] = await Promise.all([
     auth(),
     dataService.machines(),
     dataService.customers(),
     dataService.tickets(),
     dataService.pmsSchedule(),
     dataService.contracts(),
+    dataService.previousRecords(),
   ]);
   const machine = machines.find((item) => item.MachineID === machineId || item.InstallationID === machineId);
   if (!machine) notFound();
@@ -52,6 +54,7 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
   const machineContracts = contracts
     .filter((contract) => contract.InstallationID === machine.InstallationID)
     .sort((a, b) => b.ContractEnd.localeCompare(a.ContractEnd));
+  const machinePreviousRecords = previousRecordsForMachine(previousRecords, machine, customer);
   const userIsAdmin = isAdmin(session?.user.role);
 
   return (
@@ -94,8 +97,9 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Metric title="Tickets" value={machineTickets.length} icon={Ticket} />
+          <Metric title="Previous records" value={machinePreviousRecords.length} icon={FileText} />
           <Metric title="PMS records" value={machinePms.length} icon={CalendarCheck} />
           <Metric title="Contracts" value={machineContracts.length} icon={FileText} />
         </div>
@@ -124,6 +128,33 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
             );
           })}
           {!machineTickets.length ? <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">No tickets found for this machine.</p> : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Previous Records</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {machinePreviousRecords.map((record) => (
+            <div key={`${record.ticket_id}-${record.date}-${record.title}`} className="rounded-md border border-slate-200 p-3">
+              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="font-semibold text-[#12384f]">
+                    {formatDate(record.date)} - {record.title || record.tasks_classification || "Previous visit"} - {record.ticket_id}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {[record.tasks_classification, record.device].filter(Boolean).join(" - ")}
+                  </p>
+                </div>
+                <p className="text-sm font-medium text-slate-600 md:text-right">
+                  {[record.assigned_to, record.assisted_by && record.assisted_by !== "N/A" ? `Assisted by ${record.assisted_by}` : ""]
+                    .filter(Boolean)
+                    .join(" - ")}
+                </p>
+              </div>
+              {record.description ? <p className="mt-3 text-sm leading-6 text-slate-700">{record.description}</p> : null}
+            </div>
+          ))}
+          {!machinePreviousRecords.length ? <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">No previous records found for this machine.</p> : null}
         </CardContent>
       </Card>
 

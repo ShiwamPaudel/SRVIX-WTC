@@ -14,7 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { getTicket } from "@/lib/data";
+import { previousRecordsForMachine } from "@/lib/previous-records";
 import { dataService } from "@/lib/turso/service";
+import type { PreviousRecord } from "@/types/service";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ ticketId: string }> }) {
   const { ticketId } = await params;
@@ -23,7 +25,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
   if (!ticket) notFound();
   if (session?.user.role === "Engineer" && session.user.engineerId !== ticket.AssignedEngineer) notFound();
 
-  const [pmsSchedule, tickets] = await Promise.all([dataService.pmsSchedule(), dataService.tickets()]);
+  const [pmsSchedule, tickets, previousRecords] = await Promise.all([
+    dataService.pmsSchedule(),
+    dataService.tickets(),
+    dataService.previousRecords(),
+  ]);
   const machineId = ticket.machine?.MachineID || ticket.MachineID || ticket.InstallationID || "";
   const relatedPms = pmsSchedule
     .filter((pms) => pms.MachineID === machineId || pms.MachineID === ticket.MachineID || pms.MachineID === ticket.InstallationID)
@@ -43,6 +49,9 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
     })
     .sort((a, b) => (b.TicketDate || b.Date || "").localeCompare(a.TicketDate || a.Date || ""));
   const openMachineTickets = machineTickets.filter((item) => item.TicketStatus !== "Closed");
+  const machinePreviousRecords = ticket.machine
+    ? previousRecordsForMachine(previousRecords, ticket.machine, ticket.customer).filter((record) => record.ticket_id !== ticket.TicketID)
+    : [];
   const canAcceptTicket =
     session?.user.role === "Engineer" &&
     session.user.engineerId === ticket.AssignedEngineer &&
@@ -126,6 +135,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
             upcomingPmsStatus={upcomingPms?.Status}
             openTicketCount={openMachineTickets.length}
             recentTickets={machineTickets.slice(0, 3)}
+            recentPreviousRecords={machinePreviousRecords.slice(0, 3)}
           />
         </div>
       </div>
@@ -143,6 +153,7 @@ function MachineDetails({
   upcomingPmsStatus,
   openTicketCount,
   recentTickets,
+  recentPreviousRecords,
 }: {
   machineName: string;
   serialNumber?: string;
@@ -153,6 +164,7 @@ function MachineDetails({
   upcomingPmsStatus?: string;
   openTicketCount: number;
   recentTickets: { TicketID: string; TicketTitle: string; TicketStatus: string; TicketDate: string; Date?: string }[];
+  recentPreviousRecords: PreviousRecord[];
 }) {
   return (
     <Card>
@@ -195,6 +207,24 @@ function MachineDetails({
               </Link>
             ))}
             {!recentTickets.length ? <p className="text-sm text-slate-500">No previous ticket history for this machine.</p> : null}
+          </div>
+        </div>
+        <div className="rounded-md border border-slate-200 p-3">
+          <p className="text-sm font-semibold text-slate-950">Imported previous records</p>
+          <div className="mt-3 space-y-2">
+            {recentPreviousRecords.map((item) => (
+              <div key={`${item.ticket_id}-${item.date}-${item.title}`} className="rounded-md bg-slate-50 px-3 py-2 text-sm">
+                <span className="font-medium text-slate-900">
+                  {formatDate(item.date)} - {item.title || item.tasks_classification || "Previous visit"}
+                </span>
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {[item.ticket_id, item.assigned_to, item.assisted_by && item.assisted_by !== "N/A" ? `Assisted by ${item.assisted_by}` : ""]
+                    .filter(Boolean)
+                    .join(" - ")}
+                </span>
+              </div>
+            ))}
+            {!recentPreviousRecords.length ? <p className="text-sm text-slate-500">No imported previous records for this machine.</p> : null}
           </div>
         </div>
       </CardContent>

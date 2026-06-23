@@ -63,6 +63,8 @@ await client.execute("CREATE INDEX IF NOT EXISTS idx_planned_visits_engineer ON 
 await client.execute("CREATE INDEX IF NOT EXISTS idx_planned_visits_customer ON planned_visits (CustomerID)");
 await client.execute("CREATE INDEX IF NOT EXISTS idx_customer_visit_rules_customer ON customer_visit_rules (CustomerID)");
 await client.execute("CREATE INDEX IF NOT EXISTS idx_customer_visit_rules_engineer ON customer_visit_rules (AssignedEngineer)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_previousrecords_customer_device ON previousrecords (name_of_customer, device)");
+await client.execute("CREATE INDEX IF NOT EXISTS idx_previousrecords_date ON previousrecords (date)");
 
 await client.execute("UPDATE tickets SET TicketStatus = 'Closed' WHERE TicketStatus IN ('Resolved', 'Closed')");
 await client.execute("UPDATE tickets SET TicketStatus = 'Pending' WHERE TicketStatus <> 'Closed'");

@@ -141,6 +141,18 @@ CREATE TABLE IF NOT EXISTS pms_schedule (
   TicketID TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS previousrecords (
+  date TEXT NOT NULL DEFAULT '',
+  name_of_customer TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  device TEXT NOT NULL DEFAULT '',
+  tasks_classification TEXT NOT NULL DEFAULT '',
+  ticket_id TEXT NOT NULL DEFAULT '',
+  assigned_to TEXT NOT NULL DEFAULT '',
+  assisted_by TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS users (
   UserID TEXT PRIMARY KEY,
   Name TEXT NOT NULL DEFAULT '',
@@ -235,6 +247,8 @@ CREATE INDEX IF NOT EXISTS idx_ticket_logs_ticket ON ticket_logs (TicketID);
 CREATE INDEX IF NOT EXISTS idx_pms_machine ON pms_schedule (MachineID);
 CREATE INDEX IF NOT EXISTS idx_pms_customer ON pms_schedule (CustomerID);
 CREATE INDEX IF NOT EXISTS idx_pms_due_date ON pms_schedule (DueDate);
+CREATE INDEX IF NOT EXISTS idx_previousrecords_customer_device ON previousrecords (name_of_customer, device);
+CREATE INDEX IF NOT EXISTS idx_previousrecords_date ON previousrecords (date);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (Email);
 CREATE INDEX IF NOT EXISTS idx_engineers_email ON engineers (Email);
 CREATE INDEX IF NOT EXISTS idx_engineer_location_logs_engineer ON engineer_location_logs (EngineerID);

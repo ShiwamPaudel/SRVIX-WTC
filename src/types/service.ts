@@ -197,6 +197,18 @@ export type PMSSchedule = {
   TicketID?: string;
 };
 
+export type PreviousRecord = {
+  date: string;
+  name_of_customer: string;
+  title: string;
+  device: string;
+  tasks_classification: string;
+  ticket_id: string;
+  assigned_to: string;
+  assisted_by: string;
+  description: string;
+};
+
 export type AppUser = {
   UserID: string;
   Name: string;

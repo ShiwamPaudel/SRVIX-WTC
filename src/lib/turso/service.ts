@@ -16,6 +16,7 @@ import type {
   NotificationRecord,
   PlannedVisit,
   PMSSchedule,
+  PreviousRecord,
   PushSubscriptionRecord,
   Ticket,
   TicketStatus,
@@ -32,6 +33,7 @@ type TableName =
   | "engineer_location_logs"
   | "ticket_logs"
   | "pms_schedule"
+  | "previousrecords"
   | "users"
   | "notifications"
   | "push_subscriptions"
@@ -169,6 +171,17 @@ const columns = {
     "Remarks",
     "TicketID",
   ],
+  previousrecords: [
+    "date",
+    "name_of_customer",
+    "title",
+    "device",
+    "tasks_classification",
+    "ticket_id",
+    "assigned_to",
+    "assisted_by",
+    "description",
+  ],
   users: ["UserID", "Name", "Email", "PasswordHash", "Role", "EngineerID", "ActiveStatus"],
   notifications: [
     "NotificationID",
@@ -249,6 +262,7 @@ const idColumns = {
   engineer_location_logs: "LocationLogID",
   ticket_logs: "LogID",
   pms_schedule: "PMSID",
+  previousrecords: "ticket_id",
   users: "UserID",
   notifications: "NotificationID",
   push_subscriptions: "SubscriptionID",
@@ -558,6 +572,9 @@ export const dataService = {
   },
   async pmsSchedule() {
     return readTable<PMSSchedule>("pms_schedule", "DueDate");
+  },
+  async previousRecords() {
+    return readTable<PreviousRecord>("previousrecords", "date");
   },
   async users() {
     return readTable<AppUser>("users", "Email");

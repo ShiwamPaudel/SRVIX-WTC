@@ -3,6 +3,7 @@ import { hasCronAccess } from "@/lib/cron";
 import { createDuePMSTickets } from "@/lib/pms-tickets";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   if (!hasCronAccess(request)) {
