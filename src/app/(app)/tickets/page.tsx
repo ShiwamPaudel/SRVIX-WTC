@@ -60,6 +60,10 @@ export default async function TicketsPage({
       matchesDateFrom &&
       matchesDateTo
     );
+  }).sort((a, b) => {
+    const dateA = a.TicketDate || a.Date || a.VisitDate || a.LastUpdated || "";
+    const dateB = b.TicketDate || b.Date || b.VisitDate || b.LastUpdated || "";
+    return dateB.localeCompare(dateA);
   });
   const activeFilterCount = [
     params.q,
