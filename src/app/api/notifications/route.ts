@@ -6,6 +6,10 @@ import { sendNotification } from "@/lib/notifications";
 import { dataService } from "@/lib/turso/service";
 import type { NotificationRecord, UserRole } from "@/types/service";
 
+const PLANNER_ACTIVATION_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+let lastPlannerActivationCheck = 0;
+let plannerActivationCheck: Promise<unknown> | undefined;
+
 function canViewNotification(
   notification: NotificationRecord,
   user: { id?: string; email?: string | null; engineerId?: string; role?: UserRole },
@@ -17,16 +21,26 @@ function canViewNotification(
   return false;
 }
 
+async function activatePlannerTicketsPeriodically() {
+  const now = Date.now();
+  if (plannerActivationCheck) return plannerActivationCheck;
+  if (now - lastPlannerActivationCheck < PLANNER_ACTIVATION_CHECK_INTERVAL_MS) return undefined;
+
+  lastPlannerActivationCheck = now;
+  plannerActivationCheck = activateDuePlannerTickets()
+    .catch((error) => console.warn("Planner activation check failed", error))
+    .finally(() => {
+      plannerActivationCheck = undefined;
+    });
+  return plannerActivationCheck;
+}
+
 export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  await activateDuePlannerTickets();
-  const notifications = await dataService.notifications();
-  const visible = notifications
-    .filter((notification) => canViewNotification(notification, session.user))
-    .sort((a, b) => b.CreatedAt.localeCompare(a.CreatedAt))
-    .slice(0, 50);
+  await activatePlannerTicketsPeriodically();
+  const visible = await dataService.notificationsForUser(session.user, 50);
 
   return NextResponse.json({ notifications: visible });
 }

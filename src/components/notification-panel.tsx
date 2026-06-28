@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Bell, CheckCheck, Inbox, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ export function NotificationPanel() {
   const [mounted, setMounted] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.ReadAt && notification.Status !== "Read").length,
@@ -21,6 +22,8 @@ export function NotificationPanel() {
   );
 
   async function loadNotifications() {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     try {
       const response = await fetch("/api/notifications", { cache: "no-store" });
@@ -28,6 +31,7 @@ export function NotificationPanel() {
       const data = (await response.json()) as { notifications: NotificationRecord[] };
       setNotifications(data.notifications);
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }
@@ -35,8 +39,15 @@ export function NotificationPanel() {
   useEffect(() => {
     setMounted(true);
     loadNotifications();
-    const interval = window.setInterval(loadNotifications, 30000);
-    return () => window.clearInterval(interval);
+    const loadWhenVisible = () => {
+      if (document.visibilityState === "visible") loadNotifications();
+    };
+    const interval = window.setInterval(loadWhenVisible, 30000);
+    document.addEventListener("visibilitychange", loadWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", loadWhenVisible);
+    };
   }, []);
 
   useEffect(() => {

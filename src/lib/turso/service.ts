@@ -21,6 +21,7 @@ import type {
   Ticket,
   TicketStatus,
   TicketLog,
+  UserRole,
 } from "@/types/service";
 
 type TableName =
@@ -387,6 +388,45 @@ async function readWhere<T>(table: TableName, column: string, value: string, ord
   return rows.map((row) => cloneRecord(row));
 }
 
+async function readNotificationsForUser(
+  user: { id?: string; email?: string | null; engineerId?: string; role?: UserRole },
+  limit = 50,
+) {
+  const conditions: string[] = [];
+  const args: string[] = [];
+
+  if (user.role === "Admin") {
+    conditions.push(`${quote("Role")} = ?`);
+    args.push("Admin");
+  }
+  if (user.id) {
+    conditions.push(`${quote("UserID")} = ?`);
+    args.push(user.id);
+  }
+  if (user.engineerId) {
+    conditions.push(`${quote("EngineerID")} = ?`);
+    args.push(user.engineerId);
+  }
+  if (user.email) {
+    conditions.push(`${quote("Recipient")} = ?`);
+    args.push(user.email);
+  }
+  if (!conditions.length) return [];
+
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
+  const sql = `SELECT ${tableColumns("notifications").map(quote).join(", ")} FROM notifications WHERE (${conditions.join(
+    " OR ",
+  )}) ORDER BY ${quote("CreatedAt")} DESC LIMIT ${safeLimit}`;
+  const key = cacheKey(sql, args);
+  const cached = getCached<NotificationRecord[]>(key);
+  if (cached) return cached;
+
+  const result = await turso.execute({ sql, args });
+  const rows = result.rows.map((row) => rowToRecord("notifications", row as DbRecord)) as NotificationRecord[];
+  setCached(key, rows);
+  return rows.map((row) => cloneRecord(row));
+}
+
 async function insertRecord<T>(table: TableName, record: DbRecord) {
   const allowedColumns = tableColumns(table);
   const values = allowedColumns.map((column) => record[column] ?? "");
@@ -581,6 +621,9 @@ export const dataService = {
   },
   async notifications() {
     return readTable<NotificationRecord>("notifications", "CreatedAt");
+  },
+  async notificationsForUser(user: { id?: string; email?: string | null; engineerId?: string; role?: UserRole }, limit = 50) {
+    return readNotificationsForUser(user, limit);
   },
   async notification(notificationId: string) {
     return readById<NotificationRecord>("notifications", notificationId);
