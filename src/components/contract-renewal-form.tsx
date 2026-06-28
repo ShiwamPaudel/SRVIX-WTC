@@ -22,30 +22,37 @@ export function ContractRenewalForm({ customers, machines }: { customers: Custom
   const defaultInterval = selectedMachine?.PMSIntervalDays || selectedMachine?.PMSFrequency || "90";
 
   async function submit(formData: FormData) {
+    if (isSubmitting) return;
+
     setIsSubmitting(true);
-    const response = await fetch("/api/contracts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        machineId,
-        contractType: formData.get("contractType"),
-        contractStart: formData.get("contractStart"),
-        renewalYears: formData.get("renewalYears"),
-        pmsIntervalDays: formData.get("pmsIntervalDays"),
-        remarks: formData.get("remarks"),
-      }),
-    });
-    setIsSubmitting(false);
+    try {
+      const response = await fetch("/api/contracts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          machineId,
+          contractType: formData.get("contractType"),
+          contractStart: formData.get("contractStart"),
+          renewalYears: formData.get("renewalYears"),
+          pmsIntervalDays: formData.get("pmsIntervalDays"),
+          remarks: formData.get("remarks"),
+        }),
+      });
 
-    if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
-      toast.error(data?.error || "Could not update contract");
-      return;
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        toast.error(data?.error || "Could not update contract");
+        setIsSubmitting(false);
+        return;
+      }
+
+      toast.success("Contract updated and PMS dates generated");
+      router.push("/contracts");
+      router.refresh();
+    } catch {
+      toast.error("Could not update contract");
+      setIsSubmitting(false);
     }
-
-    toast.success("Contract updated and PMS dates generated");
-    router.push("/contracts");
-    router.refresh();
   }
 
   return (

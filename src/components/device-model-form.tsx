@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
@@ -9,27 +10,37 @@ import type { DeviceModel } from "@/types/service";
 
 export function DeviceModelForm() {
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     const formData = new FormData(event.currentTarget);
     const payload = Object.fromEntries(formData.entries()) as Partial<DeviceModel>;
 
-    const response = await fetch("/api/device-models", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await fetch("/api/device-models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      const data = (await response.json().catch(() => ({}))) as { error?: string };
-      toast.error("Could not create model", { description: data.error ?? "Please check the required fields." });
-      return;
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        toast.error("Could not create model", { description: data.error ?? "Please check the required fields." });
+        setIsSubmitting(false);
+        return;
+      }
+
+      toast.success("Device model created");
+      router.push("/machines/new");
+      router.refresh();
+    } catch {
+      toast.error("Could not create model", { description: "Please check your connection and try again." });
+      setIsSubmitting(false);
     }
-
-    toast.success("Device model created");
-    router.push("/machines/new");
-    router.refresh();
   }
 
   return (
@@ -51,9 +62,9 @@ export function DeviceModelForm() {
         <Input name="ImageURL" placeholder="Optional public image URL" />
       </label>
       <div className="flex justify-end lg:col-span-2">
-        <Button>
+        <Button disabled={isSubmitting}>
           <Save className="size-4" />
-          Save model
+          {isSubmitting ? "Saving..." : "Save model"}
         </Button>
       </div>
     </form>

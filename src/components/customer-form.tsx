@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 import { toast } from "sonner";
@@ -10,27 +11,37 @@ import type { Customer } from "@/types/service";
 
 export function CustomerForm() {
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     const formData = new FormData(event.currentTarget);
     const payload = Object.fromEntries(formData.entries()) as Partial<Customer>;
 
-    const response = await fetch("/api/customers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await fetch("/api/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      const data = (await response.json().catch(() => ({}))) as { error?: string };
-      toast.error("Could not create customer", { description: data.error ?? "Please check the required fields." });
-      return;
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        toast.error("Could not create customer", { description: data.error ?? "Please check the required fields." });
+        setIsSubmitting(false);
+        return;
+      }
+
+      toast.success("Customer created");
+      router.push("/machines");
+      router.refresh();
+    } catch {
+      toast.error("Could not create customer", { description: "Please check your connection and try again." });
+      setIsSubmitting(false);
     }
-
-    toast.success("Customer created");
-    router.push("/machines");
-    router.refresh();
   }
 
   return (
@@ -64,9 +75,9 @@ export function CustomerForm() {
         </SelectNative>
       </label>
       <div className="flex justify-end lg:col-span-2">
-        <Button>
+        <Button disabled={isSubmitting}>
           <Save className="size-4" />
-          Save customer
+          {isSubmitting ? "Saving..." : "Save customer"}
         </Button>
       </div>
     </form>

@@ -31,6 +31,7 @@ export function MachineForm({ customers, deviceModels }: { customers: Customer[]
   const [installationDate, setInstallationDate] = useState(new Date().toISOString().slice(0, 10));
   const [warrantyYears, setWarrantyYears] = useState("1");
   const [modelId, setModelId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sortedCustomers = useMemo(
     () => [...customers].sort((a, b) => collator.compare(customerLabel(a), customerLabel(b))),
@@ -63,25 +64,34 @@ export function MachineForm({ customers, deviceModels }: { customers: Customer[]
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     const formData = new FormData(event.currentTarget);
     const payload = Object.fromEntries(formData.entries()) as Partial<Installation>;
 
-    const response = await fetch("/api/machines", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await fetch("/api/machines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
-      const data = (await response.json().catch(() => ({}))) as { error?: string };
-      toast.error("Could not create installation", { description: data.error ?? "Please check the required fields." });
-      return;
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        toast.error("Could not create installation", { description: data.error ?? "Please check the required fields." });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const data = (await response.json()) as { installation: Installation; pms: unknown[] };
+      toast.success("Installation created", { description: `${data.pms.length} PMS rows generated.` });
+      router.push(`/machines?q=${encodeURIComponent(data.installation.SerialNumber)}`);
+      router.refresh();
+    } catch {
+      toast.error("Could not create installation", { description: "Please check your connection and try again." });
+      setIsSubmitting(false);
     }
-
-    const data = (await response.json()) as { installation: Installation; pms: unknown[] };
-    toast.success("Installation created", { description: `${data.pms.length} PMS rows generated.` });
-    router.push(`/machines?q=${encodeURIComponent(data.installation.SerialNumber)}`);
-    router.refresh();
   }
 
   return (
@@ -156,9 +166,9 @@ export function MachineForm({ customers, deviceModels }: { customers: Customer[]
           <Textarea name="Remarks" />
         </label>
         <div className="flex justify-end lg:col-span-2">
-          <Button>
+          <Button disabled={isSubmitting}>
             <Save className="size-4" />
-            Save installation
+            {isSubmitting ? "Saving..." : "Save installation"}
           </Button>
         </div>
       </div>
