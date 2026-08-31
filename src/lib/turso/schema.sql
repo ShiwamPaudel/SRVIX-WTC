@@ -235,6 +235,36 @@ CREATE TABLE IF NOT EXISTS customer_visit_rules (
   UpdatedAt TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS service_center_movements (
+  MovementID TEXT PRIMARY KEY,
+  InstallationID TEXT NOT NULL DEFAULT '',
+  FromCustomerID TEXT NOT NULL DEFAULT '',
+  FromCustomerName TEXT NOT NULL DEFAULT '',
+  FromDepartment TEXT NOT NULL DEFAULT '',
+  ReceivedAt TEXT NOT NULL DEFAULT '',
+  ReceivedBy TEXT NOT NULL DEFAULT '',
+  Status TEXT NOT NULL DEFAULT '',
+  ToCustomerID TEXT NOT NULL DEFAULT '',
+  ToCustomerName TEXT NOT NULL DEFAULT '',
+  ToDepartment TEXT NOT NULL DEFAULT '',
+  ClosedAt TEXT NOT NULL DEFAULT '',
+  Remarks TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS service_center_tasks (
+  TaskID TEXT PRIMARY KEY,
+  MovementID TEXT NOT NULL DEFAULT '',
+  InstallationID TEXT NOT NULL DEFAULT '',
+  EngineerID TEXT NOT NULL DEFAULT '',
+  EngineerName TEXT NOT NULL DEFAULT '',
+  Title TEXT NOT NULL DEFAULT '',
+  Remarks TEXT NOT NULL DEFAULT '',
+  Status TEXT NOT NULL DEFAULT '',
+  CreatedAt TEXT NOT NULL DEFAULT '',
+  ClosedAt TEXT NOT NULL DEFAULT '',
+  ClosedRemarks TEXT NOT NULL DEFAULT ''
+);
+
 CREATE INDEX IF NOT EXISTS idx_installations_customer ON installations (CustomerID);
 CREATE INDEX IF NOT EXISTS idx_installations_model ON installations (ModelID);
 CREATE INDEX IF NOT EXISTS idx_contracts_installation ON contracts (InstallationID);
@@ -261,3 +291,8 @@ CREATE INDEX IF NOT EXISTS idx_planned_visits_engineer ON planned_visits (Assign
 CREATE INDEX IF NOT EXISTS idx_planned_visits_customer ON planned_visits (CustomerID);
 CREATE INDEX IF NOT EXISTS idx_customer_visit_rules_customer ON customer_visit_rules (CustomerID);
 CREATE INDEX IF NOT EXISTS idx_customer_visit_rules_engineer ON customer_visit_rules (AssignedEngineer);
+CREATE INDEX IF NOT EXISTS idx_service_center_movements_installation ON service_center_movements (InstallationID);
+CREATE INDEX IF NOT EXISTS idx_service_center_movements_status ON service_center_movements (Status);
+CREATE INDEX IF NOT EXISTS idx_service_center_tasks_movement ON service_center_tasks (MovementID);
+CREATE INDEX IF NOT EXISTS idx_service_center_tasks_engineer ON service_center_tasks (EngineerID);
+CREATE INDEX IF NOT EXISTS idx_service_center_tasks_status ON service_center_tasks (Status);

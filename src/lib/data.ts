@@ -4,22 +4,17 @@ import { dataService } from "@/lib/turso/service";
 import type { Customer, Engineer, Machine, Ticket, TicketLog, TicketWithRelations, UserRole } from "@/types/service";
 
 export async function getServiceDataset() {
-  const [customers, deviceModels, installations, contracts, machines, tickets, engineers, logs, pmsSchedule, notifications, locationLogs] =
-    await Promise.all([
-      dataService.customers(),
-      dataService.deviceModels(),
-      dataService.installations(),
-      dataService.contracts(),
-      dataService.machines(),
-      dataService.tickets(),
-      dataService.engineers(),
-      dataService.ticketLogs(),
-      dataService.pmsSchedule(),
-      dataService.notifications(),
-      dataService.engineerLocationLogs(),
-    ]);
+  const [customers, contracts, machines, tickets, engineers, logs, pmsSchedule] = await Promise.all([
+    dataService.customers(),
+    dataService.contracts(),
+    dataService.machines(),
+    dataService.tickets(),
+    dataService.engineers(),
+    dataService.ticketLogs(),
+    dataService.pmsSchedule(),
+  ]);
 
-  return { customers, deviceModels, installations, contracts, machines, tickets, engineers, logs, pmsSchedule, notifications, locationLogs };
+  return { customers, contracts, machines, tickets, engineers, logs, pmsSchedule };
 }
 
 export function joinTicketsWithRelations({

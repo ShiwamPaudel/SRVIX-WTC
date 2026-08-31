@@ -16,6 +16,22 @@ const loginErrors: Record<string, string> = {
   password_not_configured: "This user does not have a password set.",
 };
 
+// callbackUrl comes from middleware as a relative "/path?query", but NextAuth flows can also set it
+// as an absolute URL. Accept either as long as it resolves to this origin, and return it as a
+// relative path. Anything cross-origin, unparseable, or protocol-relative ("//host", "/\host")
+// falls through to /dashboard so it cannot be used as an open redirect.
+function safeCallbackUrl(rawValue: string | null) {
+  if (!rawValue || rawValue.startsWith("//") || rawValue.startsWith("/\\")) return "/dashboard";
+
+  try {
+    const resolved = new URL(rawValue, window.location.origin);
+    if (resolved.origin !== window.location.origin) return "/dashboard";
+    return `${resolved.pathname}${resolved.search}`;
+  } catch {
+    return "/dashboard";
+  }
+}
+
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -40,7 +56,7 @@ export function LoginForm() {
     }
 
     toast.success("Welcome back");
-    router.push(params.get("callbackUrl") ?? "/dashboard");
+    router.push(safeCallbackUrl(params.get("callbackUrl")));
     router.refresh();
   }
 

@@ -1,0 +1,19 @@
+The Service Center Machines Shouldn't link to tickets, instead create new table on turso for service center machines tasks, and record it there. Remember service center machines can be tasked and assigned to any engineer. but it shall show the logs of repairs and make sure the mark repaired and deploy features works fine.
+Also the Serviol Rebrand, Replace every Srvix to Serviol.
+You already have the logos and Favicons. Let me know if you need anything.
+
+Optimize the App for Performance and Faster Loads if you have to in some cases.
+
+Need to Add - Delete the Instance of Machines to Admin.
+One More thing, Need to create the seperate roles for viewing everything, leave admin permission to as it is, instead need to add a seperate role for management (Viewer) that just views everything, rather than creating, this role just views everything, no limitation on vieweing, able to view everything but not edit, create, delete tickets, machines and anything.
+
+Then From Admin, Add a Option to Delete the Installation / Option Delete the Device Models - would be good if configured in settings, Option to Delete / Edit the Name of Customers.
+
+Also Need to work on PWA (Mobile App), Should Configure it like a App having Bottom Bar. Placing 4 Most used tabs in the bottom bar along with one last being More
+
+--AFTER THIS: Digital Service Report Feature--
+-> Check for the Compatibility and Needed Resources.
+-> Automated Mailing of Service Report in Designated Customer's Email Address.
+-> Before this: Need to Record the Customer's Phone Number and Email (Option to Add Multiple Emails for Same Customer) to send the Automated Email for closed tickets by Engineers.
+-> Also the Followup Tab (New), Every Closed Tickets Creates one Followup that needs to be Followed up (Called & Asks how was the service) - Followup Tabs not linked to Tickets, Will have Toggle Button which is Default to Pending after the tickets closed and Closed by Co-ordinator after the Followup Call. (Toggle & Changed to Follow-up Done.)
+

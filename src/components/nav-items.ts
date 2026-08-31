@@ -9,6 +9,7 @@ import {
   Settings,
   Ticket,
   Users,
+  Wrench,
 } from "lucide-react";
 import type { UserRole } from "@/types/service";
 
@@ -16,6 +17,7 @@ export const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tickets", label: "Tickets", icon: Ticket },
   { href: "/machines", label: "Machines", icon: Cpu },
+  { href: "/service-center", label: "Service Center", icon: Wrench },
   { href: "/planner", label: "Planner", icon: CalendarDays, roles: ["Admin", "Manager", "Engineer"] },
   { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
   { href: "/contracts", label: "Contracts", icon: FileText, roles: ["Admin"] },

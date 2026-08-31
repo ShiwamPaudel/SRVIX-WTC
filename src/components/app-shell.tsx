@@ -2,11 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import { auth, signOut } from "@/auth";
-import { LogOut, UserCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { UserCircle } from "lucide-react";
 import { MobileNavMenu } from "@/components/mobile-nav-menu";
 import { visibleNavItems } from "@/components/nav-items";
 import { NotificationPanel } from "@/components/notification-panel";
+import { SignOutButton } from "@/components/sign-out-button";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -80,10 +80,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                   await signOut({ redirectTo: "/login" });
                 }}
               >
-                <Button variant="secondary" size="sm">
-                  <LogOut className="size-4" />
-                  Sign out
-                </Button>
+                <SignOutButton />
               </form>
             </div>
           </div>

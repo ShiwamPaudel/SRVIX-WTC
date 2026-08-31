@@ -8,12 +8,17 @@ export default auth((req) => {
   const isPublic = publicRoutes.some((route) => pathname.startsWith(route));
   if (!req.auth && !isPublic) {
     const url = new URL("/login", req.nextUrl.origin);
-    url.searchParams.set("callbackUrl", req.nextUrl.href);
+    url.searchParams.set("callbackUrl", `${req.nextUrl.pathname}${req.nextUrl.search}`);
     return Response.redirect(url);
   }
   if (isPublic) return;
 
-  if (req.auth?.user && !pathname.startsWith("/api") && !canAccessPath(pathname, req.auth.user.role)) {
+  if (
+    req.auth?.user &&
+    pathname !== "/dashboard" &&
+    !pathname.startsWith("/api") &&
+    !canAccessPath(pathname, req.auth.user.role)
+  ) {
     return Response.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
 });

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { machineLabel } from "@/lib/service-center";
 import { dataService } from "@/lib/turso/service";
 import { APP_TIME_ZONE, toDateInputValue } from "@/lib/utils";
 
@@ -13,7 +14,7 @@ export type AttendanceEvent = {
   engineerId: string;
   date: string;
   sortAt?: string;
-  type: "Ticket" | "Location" | "Leave";
+  type: "Ticket" | "Location" | "Leave" | "Service Center";
   detail: string;
 };
 
@@ -113,16 +114,23 @@ export function dateRange(from: string, to: string) {
 }
 
 export async function attendanceReportData(allowedEngineerIds?: Set<string>) {
-  const [customers, engineers, tickets, ticketLogs, locationLogs, leaveRequests] = await Promise.all([
+  const [customers, engineers, machines, tickets, ticketLogs, locationLogs, leaveRequests, serviceCenterTasks] = await Promise.all([
     dataService.customers(),
     dataService.engineers(),
+    dataService.machines(),
     dataService.tickets(),
     dataService.ticketLogs(),
     dataService.engineerLocationLogs(),
     dataService.leaveRequests(),
+    dataService.serviceCenterTasks(),
   ]);
   const engineerIds = allowedEngineerIds ?? new Set(engineers.map((engineer) => engineer.EngineerID));
   const customerById = new Map(customers.map((customer) => [customer.CustomerID, customer]));
+  const machineById = new Map(
+    machines.flatMap((machine) =>
+      [machine.MachineID, machine.InstallationID].filter(Boolean).map((id) => [id, machine] as const),
+    ),
+  );
   const closedAtByTicketId = ticketLogs
     .filter((log) => log.Status === "Closed" && log.UpdateDate)
     .reduce<Map<string, string>>((closedAtByTicket, log) => {
@@ -175,6 +183,15 @@ export async function attendanceReportData(allowedEngineerIds?: Set<string>) {
         sortAt: log.CreatedAt,
         type: "Location" as const,
         detail: log.Remarks || "Location submitted",
+      })),
+    ...serviceCenterTasks
+      .filter((task) => task.Status === "Closed" && task.ClosedAt && engineerIds.has(task.EngineerID))
+      .map((task) => ({
+        engineerId: task.EngineerID,
+        date: dayKey(task.ClosedAt),
+        sortAt: task.ClosedAt,
+        type: "Service Center" as const,
+        detail: `Worked on ${machineLabel(machineById.get(task.InstallationID))} at Service Center`,
       })),
     ...leaveRequests
       .filter((request) => request.Status === "Approved" && engineerIds.has(request.EngineerID))

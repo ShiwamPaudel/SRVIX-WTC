@@ -27,6 +27,14 @@ export type PlannerPlanType = "General Visit" | "Scheduled Visit" | "Ticket";
 
 export type PlannerStatus = "Planned" | "Done" | "Missed" | "Cancelled";
 
+export type ServiceCenterMovementStatus =
+  | "In Service Center"
+  | "Under Repair"
+  | "Repaired"
+  | "Deployed";
+
+export type ServiceCenterTaskStatus = "Open" | "Closed";
+
 export type Customer = {
   CustomerID: string;
   NameOfCustomer: string;
@@ -289,6 +297,36 @@ export type CustomerVisitRule = {
   Remarks: string;
   CreatedAt: string;
   UpdatedAt: string;
+};
+
+export type ServiceCenterMovement = {
+  MovementID: string;
+  InstallationID: string;
+  FromCustomerID: string;
+  FromCustomerName: string;
+  FromDepartment: string;
+  ReceivedAt: string;
+  ReceivedBy: string;
+  Status: ServiceCenterMovementStatus;
+  ToCustomerID: string;
+  ToCustomerName: string;
+  ToDepartment: string;
+  ClosedAt: string;
+  Remarks: string;
+};
+
+export type ServiceCenterTask = {
+  TaskID: string;
+  MovementID: string;
+  InstallationID: string;
+  EngineerID: string;
+  EngineerName: string;
+  Title: string;
+  Remarks: string;
+  Status: ServiceCenterTaskStatus;
+  CreatedAt: string;
+  ClosedAt: string;
+  ClosedRemarks: string;
 };
 
 export type TicketWithRelations = Ticket & {

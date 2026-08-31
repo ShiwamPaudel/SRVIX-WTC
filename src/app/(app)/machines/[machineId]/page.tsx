@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarCheck, FileText, ImageIcon, Ticket, Wrench } from "lucide-react";
+import { CalendarCheck, FileText, ImageIcon, RotateCcw, Ticket, Wrench } from "lucide-react";
 import { auth } from "@/auth";
 import { BackButton } from "@/components/back-button";
 import { ContractBadge, StatusBadge } from "@/components/status-badge";
@@ -11,6 +11,8 @@ import { contractLifecycleStatus } from "@/lib/coverage";
 import { previousRecordsForMachine } from "@/lib/previous-records";
 import { formatDate } from "@/lib/utils";
 import { isAdmin } from "@/lib/permissions";
+import { SERVICE_CENTER_STATUS } from "@/lib/service-center";
+import { returnMachineToServiceCenter } from "@/lib/service-center-actions";
 import { dataService } from "@/lib/turso/service";
 import type { Machine } from "@/types/service";
 
@@ -70,12 +72,30 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
         <div className="flex gap-2">
           <BackButton fallback="/machines" />
           {userIsAdmin ? (
-            <Button asChild>
-              <Link href={`/tickets/new?machineId=${encodeURIComponent(machine.MachineID)}`}>
-                <Ticket className="size-4" />
-                New Ticket
-              </Link>
-            </Button>
+            <>
+              {machine.Status === SERVICE_CENTER_STATUS ? (
+                <Button asChild variant="secondary">
+                  <Link href="/service-center">
+                    <Wrench className="size-4" />
+                    Service Center
+                  </Link>
+                </Button>
+              ) : (
+                <form action={returnMachineToServiceCenter}>
+                  <input type="hidden" name="installationId" value={machine.InstallationID || machine.MachineID} />
+                  <Button variant="secondary">
+                    <RotateCcw className="size-4" />
+                    Return to Service Center
+                  </Button>
+                </form>
+              )}
+              <Button asChild>
+                <Link href={`/tickets/new?machineId=${encodeURIComponent(machine.MachineID)}`}>
+                  <Ticket className="size-4" />
+                  New Ticket
+                </Link>
+              </Button>
+            </>
           ) : null}
         </div>
       </div>

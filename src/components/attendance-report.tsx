@@ -19,7 +19,7 @@ type AttendanceEvent = {
   engineerId: string;
   date: string;
   sortAt?: string;
-  type: "Ticket" | "Location" | "Leave";
+  type: "Ticket" | "Location" | "Leave" | "Service Center";
   detail: string;
 };
 

@@ -18,6 +18,8 @@ import type {
   PMSSchedule,
   PreviousRecord,
   PushSubscriptionRecord,
+  ServiceCenterMovement,
+  ServiceCenterTask,
   Ticket,
   TicketStatus,
   TicketLog,
@@ -40,7 +42,9 @@ type TableName =
   | "push_subscriptions"
   | "leave_requests"
   | "planned_visits"
-  | "customer_visit_rules";
+  | "customer_visit_rules"
+  | "service_center_movements"
+  | "service_center_tasks";
 
 type DbRecord = Record<string, unknown>;
 type CachedValue = { expiresAt: number; value: unknown };
@@ -238,6 +242,34 @@ const columns = {
     "CreatedAt",
     "UpdatedAt",
   ],
+  service_center_movements: [
+    "MovementID",
+    "InstallationID",
+    "FromCustomerID",
+    "FromCustomerName",
+    "FromDepartment",
+    "ReceivedAt",
+    "ReceivedBy",
+    "Status",
+    "ToCustomerID",
+    "ToCustomerName",
+    "ToDepartment",
+    "ClosedAt",
+    "Remarks",
+  ],
+  service_center_tasks: [
+    "TaskID",
+    "MovementID",
+    "InstallationID",
+    "EngineerID",
+    "EngineerName",
+    "Title",
+    "Remarks",
+    "Status",
+    "CreatedAt",
+    "ClosedAt",
+    "ClosedRemarks",
+  ],
   leave_requests: [
     "LeaveRequestID",
     "EngineerID",
@@ -270,11 +302,15 @@ const idColumns = {
   leave_requests: "LeaveRequestID",
   planned_visits: "PlanID",
   customer_visit_rules: "RuleID",
+  service_center_movements: "MovementID",
+  service_center_tasks: "TaskID",
 } satisfies Record<TableName, string>;
 
-const READ_CACHE_TTL_MS = 5000;
+const READ_CACHE_TTL_MS = 30000;
 const READ_CACHE_MAX_ENTRIES = 80;
 const readCache = new Map<string, CachedValue>();
+const pendingReadCache = new Map<string, Promise<unknown>>();
+let readCacheVersion = 0;
 
 const nonCachedTables = new Set<TableName>(["users", "push_subscriptions"]);
 
@@ -298,6 +334,11 @@ function getCached<T>(key: string) {
   return cloneRecord(cached.value as T);
 }
 
+function cloneCachedValue<T>(value: T) {
+  if (Array.isArray(value)) return value.map((row) => cloneRecord(row)) as T;
+  return cloneRecord(value);
+}
+
 function setCached(key: string, value: unknown) {
   if (readCache.size >= READ_CACHE_MAX_ENTRIES) {
     const oldestKey = readCache.keys().next().value;
@@ -310,7 +351,32 @@ function setCached(key: string, value: unknown) {
 }
 
 function clearReadCache() {
+  readCacheVersion += 1;
   readCache.clear();
+  pendingReadCache.clear();
+}
+
+async function readCached<T>(key: string, cacheable: boolean, load: () => Promise<T>) {
+  if (!cacheable) return load();
+
+  const cached = getCached<T>(key);
+  if (cached !== undefined) return cached;
+
+  const pending = pendingReadCache.get(key) as Promise<T> | undefined;
+  if (pending) return cloneCachedValue(await pending);
+
+  const versionAtStart = readCacheVersion;
+  const nextPending = load().then((value) => {
+    if (readCacheVersion === versionAtStart) {
+      setCached(key, value);
+    }
+    return value;
+  }).finally(() => {
+    pendingReadCache.delete(key);
+  });
+
+  pendingReadCache.set(key, nextPending);
+  return cloneCachedValue(await nextPending);
 }
 
 function quote(identifier: string) {
@@ -341,14 +407,10 @@ async function readTable<T>(table: TableName, orderBy?: string) {
     orderColumn ? ` ORDER BY ${quote(orderColumn)}` : ""
   }`;
   const key = cacheKey(sql);
-  if (!nonCachedTables.has(table)) {
-    const cached = getCached<T[]>(key);
-    if (cached) return cached;
-  }
-  const result = await turso.execute(sql);
-  const rows = result.rows.map((row) => rowToRecord(table, row as DbRecord)) as T[];
-  if (!nonCachedTables.has(table)) setCached(key, rows);
-  return rows.map((row) => cloneRecord(row));
+  return readCached(key, !nonCachedTables.has(table), async () => {
+    const result = await turso.execute(sql);
+    return result.rows.map((row) => rowToRecord(table, row as DbRecord)) as T[];
+  });
 }
 
 async function readById<T>(table: TableName, id: string) {
@@ -356,18 +418,14 @@ async function readById<T>(table: TableName, id: string) {
   const sql = `SELECT ${tableColumns(table).map(quote).join(", ")} FROM ${table} WHERE ${quote(idColumn)} = ? LIMIT 1`;
   const args = [id];
   const key = cacheKey(sql, args);
-  if (!nonCachedTables.has(table)) {
-    const cached = getCached<T | undefined>(key);
-    if (cached !== undefined) return cached;
-  }
-  const result = await turso.execute({
-    sql,
-    args,
+  return readCached(key, !nonCachedTables.has(table), async () => {
+    const result = await turso.execute({
+      sql,
+      args,
+    });
+    const row = result.rows[0];
+    return row ? (rowToRecord(table, row as DbRecord) as T) : undefined;
   });
-  const row = result.rows[0];
-  const record = row ? (rowToRecord(table, row as DbRecord) as T) : undefined;
-  if (!nonCachedTables.has(table)) setCached(key, record);
-  return record ? cloneRecord(record) : undefined;
 }
 
 async function readWhere<T>(table: TableName, column: string, value: string, orderBy?: string) {
@@ -378,14 +436,10 @@ async function readWhere<T>(table: TableName, column: string, value: string, ord
   }`;
   const args = [value];
   const key = cacheKey(sql, args);
-  if (!nonCachedTables.has(table)) {
-    const cached = getCached<T[]>(key);
-    if (cached) return cached;
-  }
-  const result = await turso.execute({ sql, args });
-  const rows = result.rows.map((row) => rowToRecord(table, row as DbRecord)) as T[];
-  if (!nonCachedTables.has(table)) setCached(key, rows);
-  return rows.map((row) => cloneRecord(row));
+  return readCached(key, !nonCachedTables.has(table), async () => {
+    const result = await turso.execute({ sql, args });
+    return result.rows.map((row) => rowToRecord(table, row as DbRecord)) as T[];
+  });
 }
 
 async function readNotificationsForUser(
@@ -418,13 +472,10 @@ async function readNotificationsForUser(
     " OR ",
   )}) ORDER BY ${quote("CreatedAt")} DESC LIMIT ${safeLimit}`;
   const key = cacheKey(sql, args);
-  const cached = getCached<NotificationRecord[]>(key);
-  if (cached) return cached;
-
-  const result = await turso.execute({ sql, args });
-  const rows = result.rows.map((row) => rowToRecord("notifications", row as DbRecord)) as NotificationRecord[];
-  setCached(key, rows);
-  return rows.map((row) => cloneRecord(row));
+  return readCached(key, true, async () => {
+    const result = await turso.execute({ sql, args });
+    return result.rows.map((row) => rowToRecord("notifications", row as DbRecord)) as NotificationRecord[];
+  });
 }
 
 async function insertRecord<T>(table: TableName, record: DbRecord) {
@@ -661,6 +712,12 @@ export const dataService = {
   async customerVisitRules() {
     return readTable<CustomerVisitRule>("customer_visit_rules", "StartDate");
   },
+  async serviceCenterMovements() {
+    return readTable<ServiceCenterMovement>("service_center_movements", "ReceivedAt");
+  },
+  async serviceCenterTasks() {
+    return readTable<ServiceCenterTask>("service_center_tasks", "CreatedAt");
+  },
   async customerVisitRule(ruleId: string) {
     return readById<CustomerVisitRule>("customer_visit_rules", ruleId);
   },
@@ -672,6 +729,18 @@ export const dataService = {
   },
   async deleteCustomerVisitRule(ruleId: string) {
     await deleteRecord("customer_visit_rules", ruleId);
+  },
+  async createServiceCenterMovement(movement: ServiceCenterMovement) {
+    return insertRecord<ServiceCenterMovement>("service_center_movements", movement);
+  },
+  async updateServiceCenterMovement(movementId: string, patch: Partial<ServiceCenterMovement>) {
+    return updateRecord<ServiceCenterMovement>("service_center_movements", movementId, patch);
+  },
+  async createServiceCenterTask(task: ServiceCenterTask) {
+    return insertRecord<ServiceCenterTask>("service_center_tasks", task);
+  },
+  async updateServiceCenterTask(taskId: string, patch: Partial<ServiceCenterTask>) {
+    return updateRecord<ServiceCenterTask>("service_center_tasks", taskId, patch);
   },
   async pushSubscriptionsForUser(userId: string) {
     return readWhere<PushSubscriptionRecord>("push_subscriptions", "UserID", userId, "LastSeenAt");
@@ -702,6 +771,9 @@ export const dataService = {
   },
   async createInstallation(installation: Installation) {
     return insertRecord<Installation>("installations", installation);
+  },
+  async updateInstallation(installationId: string, patch: Partial<Installation>) {
+    return updateRecord<Installation>("installations", installationId, patch);
   },
   async createContract(contract: ContractRecord) {
     return insertRecord<ContractRecord>("contracts", contract);

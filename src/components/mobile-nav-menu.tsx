@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { LogOut, Menu, UserCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { visibleNavItems } from "@/components/nav-items";
+import { clearServiceWorkerCache } from "@/lib/clear-service-worker-cache";
 import type { UserRole } from "@/types/service";
 
 export function MobileNavMenu({
@@ -81,7 +82,10 @@ export function MobileNavMenu({
                 variant="secondary"
                 size="sm"
                 className="h-11 w-full justify-center text-base"
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={() => {
+                  clearServiceWorkerCache();
+                  signOut({ callbackUrl: "/login" });
+                }}
               >
                 <LogOut className="size-5" />
                 Sign out
