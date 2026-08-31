@@ -42,13 +42,20 @@ function cacheMatch(request) {
     .catch(() => undefined);
 }
 
+// Never throws and never rejects: caching is best-effort and must not affect what the page is
+// served. response.clone() can throw if the body is already disturbed, so it is guarded too.
 function putInCache(request, response) {
   if (!isCacheable(response)) return;
-  const copy = response.clone();
-  caches
-    .open(CACHE_NAME)
-    .then((cache) => cache.put(request, copy))
-    .catch(() => {});
+
+  try {
+    const copy = response.clone();
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.put(request, copy))
+      .catch(() => {});
+  } catch {
+    // ignore
+  }
 }
 
 function offlineResponse() {
@@ -100,25 +107,33 @@ self.addEventListener("fetch", (event) => {
           putInCache(event.request, response);
           return response;
         })
-        .catch(() => cacheMatch(event.request).then((cached) => cached || offlineResponse())),
+        .catch(() => cacheMatch(event.request).then((cached) => cached || offlineResponse()))
+        .catch(() => offlineResponse()),
     );
     return;
   }
 
-  // Sub-resources: stale-while-revalidate.
+  // Sub-resources: stale-while-revalidate. Every promise handed to respondWith below is terminated
+  // by a catch, so it can only ever resolve to a Response.
   event.respondWith(
-    cacheMatch(event.request).then((cached) => {
-      const network = fetch(event.request).then((response) => {
-        putInCache(event.request, response);
-        return response;
-      });
+    cacheMatch(event.request)
+      .then((cached) => {
+        const network = fetch(event.request).then((response) => {
+          putInCache(event.request, response);
+          return response;
+        });
 
-      if (cached) {
-        network.catch(() => {});
-        return cached;
-      }
-      return network;
-    }),
+        if (cached) {
+          // The cached copy is already being returned, so a failed background refresh must not
+          // surface as an unhandled rejection.
+          network.catch(() => {});
+          return cached;
+        }
+
+        // Nothing cached, so `network` is what respondWith receives and it must not reject.
+        return network.catch(() => new Response(null, { status: 504, statusText: "Offline" }));
+      })
+      .catch(() => new Response(null, { status: 504, statusText: "Offline" })),
   );
 });
 
