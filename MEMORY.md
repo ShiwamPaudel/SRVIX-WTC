@@ -229,7 +229,7 @@ rewrites the installation's customer and reassigns pending PMS rows. Uses **serv
 ticket **accepted**, ticket **closed**, **location** check-in, closed **service-center task**, plus
 approved **leave**. A day counts as present if any event exists. Engineers see only themselves;
 Admin sees everyone.
-**Cron `15 14 * * *` UTC = 20:00 NPT** → `/api/reports/daily-email` → PDF via `pdfkit`
+**Cron `15 13 * * *` UTC = 19:00 NPT** → `/api/reports/daily-email` → PDF via `pdfkit`
 (`src/lib/daily-report-pdf.ts`) emailed to `REPORT_EMAIL_TO` via Zoho SMTP.
 
 ### Notifications
