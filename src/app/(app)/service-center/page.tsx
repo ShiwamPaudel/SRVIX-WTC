@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckCircle2, Cpu, ExternalLink, ImageIcon, Send, Wrench } from "lucide-react";
+import { CheckCircle2, Cpu, ExternalLink, ImageIcon, Send } from "lucide-react";
 import { auth } from "@/auth";
 import {
   closeServiceCenterTask,
-  createServiceCenterTask,
   deployServiceCenterMachine,
   markServiceCenterRepaired,
 } from "@/lib/service-center-actions";
@@ -22,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SelectNative } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { ServiceCenterTaskForm } from "@/components/service-center-task-form";
 
 export const dynamic = "force-dynamic";
 
@@ -84,10 +83,8 @@ export default async function ServiceCenterPage() {
 
       <div className="space-y-4">
         {rows.map(({ machine, movement, tasks }) => {
-          const openTasks = tasks.filter((task) => task.Status !== "Closed");
           const recentTasks = [...tasks].sort((a, b) => (b.ClosedAt || b.CreatedAt).localeCompare(a.ClosedAt || a.CreatedAt));
-          const currentEngineerOpenTask = openTasks.find((task) => task.EngineerID === currentEngineerId);
-          const canCreateTask = currentEngineerId && !currentEngineerOpenTask && movement.Status !== SERVICE_CENTER_REPAIRED_STATUS;
+          const canCreateTask = Boolean(currentEngineerId);
           const canDeploy = movement.Status === SERVICE_CENTER_REPAIRED_STATUS;
 
           return (
@@ -158,25 +155,13 @@ export default async function ServiceCenterPage() {
 
                 <div className="space-y-4">
                   {canCreateTask ? (
-                    <form action={createServiceCenterTask} className="space-y-3 rounded-md border border-slate-200 p-3">
-                      <input type="hidden" name="movementId" value={movement.MovementID} />
-                      <input type="hidden" name="installationId" value={movement.InstallationID} />
-                      <div className="flex items-center gap-2">
-                        <Wrench className="size-4 text-sky-600" />
-                        <p className="font-semibold text-slate-950">Create task</p>
-                      </div>
-                      <Input name="title" placeholder="Task title" required />
-                      <Textarea name="remarks" placeholder="Optional notes" />
-                      <Button className="w-full justify-center">
-                        <Wrench className="size-4" />
-                        Start task
-                      </Button>
-                    </form>
-                  ) : currentEngineerOpenTask ? (
-                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                      You already have an open task on this machine.
-                    </div>
-                  ) : currentEngineerId && movement.Status === SERVICE_CENTER_REPAIRED_STATUS ? (
+                    <ServiceCenterTaskForm
+                      movementId={movement.MovementID}
+                      installationId={movement.InstallationID}
+                      buttonClassName="w-full justify-center"
+                    />
+                  ) : null}
+                  {currentEngineerId && movement.Status === SERVICE_CENTER_REPAIRED_STATUS ? (
                     <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
                       This machine is marked repaired and ready for admin deployment.
                     </div>

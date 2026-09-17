@@ -108,6 +108,8 @@ export async function createServiceCenterTask(formData: FormData) {
 
   await dataService.createServiceCenterTask(task);
   revalidatePath("/service-center");
+  revalidatePath(`/machines/${installationId}`);
+  revalidatePath("/attendance");
 }
 
 export async function closeServiceCenterTask(formData: FormData) {
@@ -130,6 +132,7 @@ export async function closeServiceCenterTask(formData: FormData) {
   }
 
   revalidatePath("/service-center");
+  revalidatePath(`/machines/${task.InstallationID}`);
   revalidatePath("/attendance");
 }
 

@@ -102,6 +102,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
                 <p className="mt-1 text-sm leading-6 text-slate-800">{ticket.ProblemDescription}</p>
               </div>
               <div className="md:col-span-2">
+                <p className="text-sm font-medium text-slate-500">Engineer remarks</p>
+                <p className="mt-1 text-sm leading-6 text-slate-800">{ticket.EngineerRemarks || "No engineer remarks yet."}</p>
+              </div>
+              <div className="md:col-span-2">
                 <p className="text-sm font-medium text-slate-500">Resolution</p>
                 <p className="mt-1 text-sm leading-6 text-slate-800">{ticket.Resolution || "Resolution pending."}</p>
               </div>
@@ -119,6 +123,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ t
           <TicketClosePanel
             ticketId={ticket.TicketID}
             attachmentUrls={ticket.AttachmentURLs}
+            engineerRemarks={ticket.EngineerRemarks}
             serviceType={ticket.ServiceType}
             canClose={canCloseTicket}
             isClosed={ticket.TicketStatus === "Closed"}

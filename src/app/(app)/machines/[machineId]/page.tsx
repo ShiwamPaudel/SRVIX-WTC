@@ -9,10 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { contractLifecycleStatus } from "@/lib/coverage";
 import { previousRecordsForMachine } from "@/lib/previous-records";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDateTime } from "@/lib/utils";
 import { isAdmin } from "@/lib/permissions";
-import { SERVICE_CENTER_STATUS } from "@/lib/service-center";
+import { SERVICE_CENTER_REPAIRED_STATUS, SERVICE_CENTER_STATUS, isOpenServiceCenterMovement } from "@/lib/service-center";
 import { returnMachineToServiceCenter } from "@/lib/service-center-actions";
+import { ServiceCenterTaskForm } from "@/components/service-center-task-form";
 import { dataService } from "@/lib/turso/service";
 import type { Machine } from "@/types/service";
 
@@ -33,7 +34,7 @@ function MachinePhoto({ machine }: { machine: Machine }) {
 
 export default async function MachineDetailPage({ params }: { params: Promise<{ machineId: string }> }) {
   const { machineId } = await params;
-  const [session, machines, customers, tickets, pmsSchedule, contracts, previousRecords] = await Promise.all([
+  const [session, machines, customers, tickets, pmsSchedule, contracts, previousRecords, movements, serviceCenterTasks] = await Promise.all([
     auth(),
     dataService.machines(),
     dataService.customers(),
@@ -41,6 +42,8 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
     dataService.pmsSchedule(),
     dataService.contracts(),
     dataService.previousRecords(),
+    dataService.serviceCenterMovements(),
+    dataService.serviceCenterTasks(),
   ]);
   const machine = machines.find((item) => item.MachineID === machineId || item.InstallationID === machineId);
   if (!machine) notFound();
@@ -58,6 +61,16 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
     .sort((a, b) => b.ContractEnd.localeCompare(a.ContractEnd));
   const machinePreviousRecords = previousRecordsForMachine(previousRecords, machine, customer);
   const userIsAdmin = isAdmin(session?.user.role);
+  const installationId = machine.InstallationID || machine.MachineID;
+  const openMovement = movements
+    .filter((movement) => movement.InstallationID === installationId && isOpenServiceCenterMovement(movement))
+    .sort((a, b) => b.ReceivedAt.localeCompare(a.ReceivedAt))[0];
+  const movementTasks = openMovement
+    ? serviceCenterTasks
+        .filter((task) => task.MovementID === openMovement.MovementID)
+        .sort((a, b) => (b.ClosedAt || b.CreatedAt).localeCompare(a.ClosedAt || a.CreatedAt))
+    : [];
+  const canAddServiceCenterTask = Boolean(session?.user.engineerId && openMovement);
 
   return (
     <div className="space-y-5">
@@ -124,6 +137,49 @@ export default async function MachineDetailPage({ params }: { params: Promise<{ 
           <Metric title="Contracts" value={machineContracts.length} icon={FileText} />
         </div>
       </div>
+
+      {openMovement ? (
+        <Card>
+          <CardHeader className="gap-3 sm:flex sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle>Service Center</CardTitle>
+              <p className="mt-1 text-sm text-slate-500">
+                Received {formatDateTime(openMovement.ReceivedAt)} from {openMovement.FromCustomerName || machine.NameOfCustomer || "customer not linked"}
+                {openMovement.FromDepartment ? ` - ${openMovement.FromDepartment}` : ""}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-start gap-2">
+              <Badge variant={openMovement.Status === SERVICE_CENTER_REPAIRED_STATUS ? "green" : "blue"}>{openMovement.Status || SERVICE_CENTER_STATUS}</Badge>
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/service-center">
+                  <Wrench className="size-4" />
+                  Service Center
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {canAddServiceCenterTask ? (
+              <ServiceCenterTaskForm movementId={openMovement.MovementID} installationId={openMovement.InstallationID} />
+            ) : null}
+            {movementTasks.map((task) => (
+              <div key={task.TaskID} className="grid gap-2 rounded-md border border-slate-200 p-3 md:grid-cols-[1fr_170px_110px] md:items-center">
+                <div>
+                  <p className="font-semibold text-[#12384f]">{task.Title}</p>
+                  <p className="text-sm text-slate-500">{task.ClosedRemarks || task.Remarks || "No notes"}</p>
+                </div>
+                <p className="text-sm text-slate-600">{task.EngineerName || task.EngineerID}</p>
+                <div className="md:text-right">
+                  <Badge variant={task.Status === "Closed" ? "green" : "amber"}>{task.Status}</Badge>
+                </div>
+              </div>
+            ))}
+            {!movementTasks.length ? (
+              <p className="rounded-md bg-slate-50 p-4 text-sm text-slate-500">No service center tasks logged for this machine yet.</p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader><CardTitle>Ticket History</CardTitle></CardHeader>

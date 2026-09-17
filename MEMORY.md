@@ -3,7 +3,7 @@
 > Reference brief for future work on this repo. **This is a LIVE PRODUCTION system.** Treat every
 > change as a change to a running service used daily by field engineers.
 
-Last studied: 2026-08-07 · branch `main` · last commit `52ca120 changes to active cpu usage on cloud`
+Last studied: 2026-09-18 · branch `main` · last commit `ab1e42b cron job update`
 
 ---
 
@@ -204,9 +204,18 @@ Admin/planner/PMS creates → push + email to assigned engineer → engineer **a
 (`TicketAcceptedAt` stamped; only the assignee can accept; reassignment clears acceptance) →
 engineer uploads service report → closes with remarks → admins get a "ticket closed" push.
 
+**Engineer remarks without closing:** `TicketClosePanel` has a **Save Remarks** button that PATCHes
+`{ EngineerRemarks }` alone, leaving the ticket `Pending` (used for pending reasons). The PATCH handler
+already writes a `ticket_logs` row (`Remarks: body.EngineerRemarks`, current status), so every save is
+audited. The value is displayed in the Service Detail card next to `Resolution`.
+
 **Service report gate:** `serviceReportRequiredForServiceType()` in `src/lib/constants.ts` — a report
 attachment is required to close **except** for `General Visit` and `Breakdown (On-call Addressed)`.
 Enforced in three places: `TicketForm`, `TicketClosePanel`, and both ticket API handlers.
+`TicketReportUpload` → `TicketClosePanel` do **not** rely on the refreshed server prop for the gate:
+`src/lib/ticket-attachments.ts` publishes the uploaded URLs over a window event and that client-side
+fact wins until the prop's value actually changes. Without it the 30 s read cache (§11.3) could leave
+the Close button disabled until a **second** report was uploaded.
 
 ### Planner (`src/lib/planner-tickets.ts`, `src/components/planner-calendar.tsx` — 627 lines)
 - Creating a plan **immediately creates its ticket**, but with `ResponseType = "Planner scheduled for 9 AM NPT"`.
@@ -217,18 +226,29 @@ Enforced in three places: `TicketForm`, `TicketClosePanel`, and both ticket API 
 - `customer_visit_rules` occurrences are rendered **virtually** in the calendar (`addRuleOccurrences`),
   deduped against real plans; they are never persisted as rows.
 
-### Service center (newest feature — see §9)
+### Service center
 `Machine → "Return to Service Center"` (admin) creates a `service_center_movements` row and sets the
-installation `Status = "In Service Center"`. Engineers open/close `service_center_tasks` (one open task
-per engineer per machine). Admin marks **Repaired**, then **Deploys** to a customer/department, which
-rewrites the installation's customer and reassigns pending PMS rows. Uses **server actions**
-(`src/lib/service-center-actions.ts`), not API routes — the only feature that does.
+installation `Status = "In Service Center"`. Admin marks **Repaired**, then **Deploys** to a
+customer/department, which rewrites the installation's customer and reassigns pending PMS rows. Uses
+**server actions** (`src/lib/service-center-actions.ts`), not API routes — the only feature that does.
+
+`service_center_tasks` are engineer work-log entries tagged to the machine — **never tickets**. Any
+number per engineer per machine (the old one-open-task limit is gone), added through
+`ServiceCenterTaskForm` (an **Add Task** button that expands into title + notes) on **both**
+`/service-center` and `/machines/[machineId]` (the machine page shows a Service Center card whenever the
+machine has an open movement). Requires an `engineerId`, so admin-only accounts cannot add tasks — a
+task with no `EngineerID` would never reach the attendance report. Allowed until the movement is
+**Deployed**, including after *Mark repaired*. The engineer (or an admin) closes a task with a note.
 
 ### Attendance & daily report
 `attendanceReportData()` (`src/lib/attendance.ts`) derives presence from four event sources:
-ticket **accepted**, ticket **closed**, **location** check-in, closed **service-center task**, plus
+ticket **accepted**, ticket **closed**, **location** check-in, **service-center task**, plus
 approved **leave**. A day counts as present if any event exists. Engineers see only themselves;
 Admin sees everyone.
+Service-center events fire on the task's **CreatedAt** day, worded exactly
+`Worked in Service Center <machineLabel> : <Title>`; a task closed on a later day adds a second
+`Closed task in Service Center …` event so that day is not blank. Both the grid and the PDF render
+`<type> - <detail> (time)`, so the line reads "Service Center - Worked in Service Center …".
 **Cron `15 13 * * *` UTC = 19:00 NPT** → `/api/reports/daily-email` → PDF via `pdfkit`
 (`src/lib/daily-report-pdf.ts`) emailed to `REPORT_EMAIL_TO` via Zoho SMTP.
 
@@ -271,20 +291,22 @@ first) — **except Turso**, which throws on module load.
 
 ---
 
-## 9. Current working-tree state (uncommitted as of 2026-08-07)
+## 9. Deployment state (as of 2026-09-18)
 
-The **Service Center feature is built but NOT committed**, so it is very likely **not yet in production**:
+The **Service Center feature is committed** (`1497477 changes depliy`) — `schema.sql`, `service.ts`,
+`types/service.ts`, `turso-migrate.mjs`, `attendance.ts`, `nav-items.ts`, the `/service-center` page and
+`src/lib/service-center*.ts` are all tracked. `service_center_movements` / `service_center_tasks` live in
+`schema.sql` §238-298.
 
-- Untracked: `src/app/(app)/service-center/`, `src/lib/service-center.ts`, `src/lib/service-center-actions.ts`
-- Untracked: `public/Serviol - Favicon.png`, `Serviol - Logo.png`, `Serviol - Logo White.png`
-  (suggests a possible **"Serviol" rebrand** in flight — not referenced by any code yet)
-- Modified: `schema.sql` (+35: the two `service_center_*` tables + indexes), `service.ts` (+144),
-  `types/service.ts` (+38), `turso-migrate.mjs` (+5 indexes), `attendance.ts` (+21: service-center
-  events), `data.ts`, `nav-items.ts` (+Service Center link), `machines/[machineId]/page.tsx`
-  (+Return-to-Service-Center button), `notifications/route.ts`, `attendance-report.tsx`, `planner-calendar.tsx`
+⚠️ It has never been confirmed that **`npm run db:migrate` was run against prod Turso**. If the
+service-center pages 500 on a fresh deploy, that migration is the first thing to check (it is
+idempotent, so re-running is safe).
 
-**Before touching anything, confirm with the user whether prod already has these tables.**
-`npm run db:migrate` must be run against prod Turso before deploying this code.
+The `public/Serviol - *.png` logos are still unreferenced by any code — a possible **"Serviol" rebrand**
+that was never wired up.
+
+Changes made 2026-09-18 (remarks saving, one-report close gate, service-center Add Task + attendance
+line) touch **no schema, no `columns` allow-list and no types** — they need no migration.
 
 ---
 
@@ -309,7 +331,10 @@ The **Service Center feature is built but NOT committed**, so it is very likely 
 1. **Plaintext passwords** in `users.PasswordHash` (§5). Highest-severity item.
 2. **`GET /api/pms` has no auth check** — leaks the full PMS schedule to anyone.
 3. `readCache` is per-serverless-instance; any write flushes the whole cache. On Vercel, different
-   instances can serve stale reads for up to 30 s.
+   instances can serve stale reads for up to 30 s. **Consequence for UI:** after a client mutation,
+   `router.refresh()` can return the pre-write row, so a client component must not re-derive a gate
+   purely from its server prop — keep the local fact authoritative until the prop's value changes
+   (see `src/lib/ticket-attachments.ts`).
 4. Planner activation depends on someone loading `/tickets`, `/planner`, or the notification poll —
    a quiet day means late activation. There is no cron for it.
 5. PMS generation is capped at **100 rows** per call; long warranties/contracts silently truncate.
@@ -335,6 +360,8 @@ The **Service Center feature is built but NOT committed**, so it is very likely 
 | Change PMS auto-tickets | `src/lib/pms-tickets.ts` |
 | Change planner behavior | `src/lib/planner-tickets.ts` + `src/components/planner-calendar.tsx` |
 | Change attendance/report | `src/lib/attendance.ts`, `src/lib/daily-report-pdf.ts`, `src/lib/daily-report-email.ts` |
+| Change ticket closure / engineer remarks | `src/components/ticket-close-panel.tsx` + `src/lib/ticket-attachments.ts` |
+| Change service-center flow or tasks | `src/lib/service-center-actions.ts`, `src/lib/service-center.ts`, `src/components/service-center-task-form.tsx` |
 | Change notifications/push | `src/lib/notifications.ts`, `src/lib/push-notifications.ts` |
 | Change file storage | `src/lib/storage/service.ts` → `src/lib/zoho/workdrive.ts` |
 | Change access rules | `src/lib/permissions.ts` + `middleware.ts` + the individual API route |

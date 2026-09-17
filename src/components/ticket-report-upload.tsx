@@ -3,13 +3,7 @@
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { UploadWidget } from "@/components/upload-widget";
-
-function splitUrls(value?: string) {
-  return (value ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
+import { publishTicketAttachments, splitAttachmentUrls } from "@/lib/ticket-attachments";
 
 export function TicketReportUpload({
   ticketId,
@@ -34,13 +28,14 @@ export function TicketReportUpload({
       return;
     }
 
+    publishTicketAttachments(ticketId, urls);
     toast.success("Service report attached");
     router.refresh();
   }
 
   return (
     <UploadWidget
-      initialUrls={splitUrls(attachmentUrls)}
+      initialUrls={splitAttachmentUrls(attachmentUrls)}
       title="Attach Service Report"
       description="PDFs and images are accepted. Each file must be less than 2 MB."
       buttonLabel="Capture / Upload report"

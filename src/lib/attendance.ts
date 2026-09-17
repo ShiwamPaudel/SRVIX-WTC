@@ -185,13 +185,28 @@ export async function attendanceReportData(allowedEngineerIds?: Set<string>) {
         detail: log.Remarks || "Location submitted",
       })),
     ...serviceCenterTasks
-      .filter((task) => task.Status === "Closed" && task.ClosedAt && engineerIds.has(task.EngineerID))
+      .filter((task) => task.CreatedAt && engineerIds.has(task.EngineerID))
+      .map((task) => ({
+        engineerId: task.EngineerID,
+        date: dayKey(task.CreatedAt),
+        sortAt: task.CreatedAt,
+        type: "Service Center" as const,
+        detail: `Worked in Service Center ${machineLabel(machineById.get(task.InstallationID))} : ${task.Title || "Service center work"}`,
+      })),
+    ...serviceCenterTasks
+      .filter(
+        (task) =>
+          task.Status === "Closed" &&
+          task.ClosedAt &&
+          dayKey(task.ClosedAt) !== dayKey(task.CreatedAt) &&
+          engineerIds.has(task.EngineerID),
+      )
       .map((task) => ({
         engineerId: task.EngineerID,
         date: dayKey(task.ClosedAt),
         sortAt: task.ClosedAt,
         type: "Service Center" as const,
-        detail: `Worked on ${machineLabel(machineById.get(task.InstallationID))} at Service Center`,
+        detail: `Closed task in Service Center ${machineLabel(machineById.get(task.InstallationID))} : ${task.Title || "Service center work"}`,
       })),
     ...leaveRequests
       .filter((request) => request.Status === "Approved" && engineerIds.has(request.EngineerID))
