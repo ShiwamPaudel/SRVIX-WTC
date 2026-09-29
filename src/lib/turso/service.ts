@@ -824,6 +824,9 @@ export const dataService = {
   async createTicketLog(log: TicketLog) {
     return insertRecord<TicketLog>("ticket_logs", log);
   },
+  async updateEngineer(engineerId: string, patch: Partial<Engineer>) {
+    return updateRecord<Engineer>("engineers", engineerId, patch);
+  },
   async updateEngineerLocation(engineerId: string, latitude: string, longitude: string) {
     return updateRecord<Engineer>("engineers", engineerId, {
       LiveLatitude: latitude,

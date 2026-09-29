@@ -4,6 +4,7 @@ import { LiveLocationTracker } from "@/components/live-location-tracker";
 import { MapAutoRefresh } from "@/components/map-auto-refresh";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { isEngineerResigned } from "@/lib/engineers";
 import { dataService } from "@/lib/turso/service";
 import { formatDateTime, minutesAgo } from "@/lib/utils";
 import type { EngineerLocationLog } from "@/types/service";
@@ -30,6 +31,8 @@ export default async function MapsPage() {
     return latest;
   }, new Map());
   const engineerById = new Map(engineers.map((engineer) => [engineer.EngineerID, engineer]));
+  // Engineers who resigned keep their location history, but they are no longer on the road.
+  const currentEngineers = engineers.filter((engineer) => !isEngineerResigned(engineer));
 
   const points = Array.from(latestLocationByEngineer.values())
     .filter((location) => {
@@ -49,8 +52,9 @@ export default async function MapsPage() {
         kind: "Engineer",
       };
     })
-    .filter((point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude));
-  const locationRows = engineers
+    .filter((point) => Number.isFinite(point.latitude) && Number.isFinite(point.longitude))
+    .filter((point) => !isEngineerResigned(engineerById.get(point.id)));
+  const locationRows = currentEngineers
     .map((engineer) => {
       const latest = latestLocationByEngineer.get(engineer.EngineerID);
       const updatedAt = latest ? new Date(latest.CreatedAt).getTime() : 0;

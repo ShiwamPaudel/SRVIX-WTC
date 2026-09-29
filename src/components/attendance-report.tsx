@@ -13,6 +13,7 @@ type AttendanceEngineer = {
   id: string;
   name: string;
   department?: string;
+  resigned?: boolean;
 };
 
 type AttendanceEvent = {
@@ -128,10 +129,20 @@ export function AttendanceReport({
   const [dailyReportDate, setDailyReportDate] = useState(defaultTo);
   const [engineerId, setEngineerId] = useState("");
 
-  const visibleEngineers = useMemo(
-    () => (canChooseEngineer && engineerId ? engineers.filter((engineer) => engineer.id === engineerId) : engineers),
-    [canChooseEngineer, engineerId, engineers],
-  );
+  // A resigned engineer keeps their column for any range that still contains their work, and
+  // drops out of ranges after they left instead of showing an empty column forever.
+  const engineerIdsWithEvents = useMemo(() => {
+    const ids = new Set<string>();
+    events.forEach((event) => {
+      if (event.date >= dateFrom && event.date <= dateTo) ids.add(event.engineerId);
+    });
+    return ids;
+  }, [events, dateFrom, dateTo]);
+
+  const visibleEngineers = useMemo(() => {
+    const rostered = engineers.filter((engineer) => !engineer.resigned || engineerIdsWithEvents.has(engineer.id));
+    return canChooseEngineer && engineerId ? rostered.filter((engineer) => engineer.id === engineerId) : rostered;
+  }, [canChooseEngineer, engineerId, engineers, engineerIdsWithEvents]);
 
   const days = useMemo(() => dateRange(dateFrom, dateTo), [dateFrom, dateTo]);
   const eventsByCell = useMemo(() => {
@@ -229,7 +240,7 @@ export function AttendanceReport({
               <option value="">All engineers</option>
               {engineers.map((engineer) => (
                 <option key={engineer.id} value={engineer.id}>
-                  {engineer.name}
+                  {engineer.resigned ? `${engineer.name} (Resigned)` : engineer.name}
                 </option>
               ))}
             </SelectNative>

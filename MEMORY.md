@@ -168,6 +168,7 @@ Nav is defined in `src/components/nav-items.ts` (`visibleNavItems(role)`).
 | `/api/contracts` | POST | Admin. Creates contract **and auto-generates up to 100 PMS rows** through contract end |
 | `/api/customers`, `/api/device-models` | POST | Admin |
 | `/api/engineers` | POST | Admin. Creates engineer + linked user account |
+| `/api/engineers/[engineerId]` | PATCH | Admin. Resign / reactivate an engineer (see §7) |
 | `/api/engineers/location` | PATCH | GPS check-in; remarks required; writes log + notifies admins |
 | `/api/pms` | GET | ⚠️ **No auth check** |
 | `/api/pms/[pmsId]/ticket` | POST | Admin; manual PMS→ticket |
@@ -216,6 +217,34 @@ Enforced in three places: `TicketForm`, `TicketClosePanel`, and both ticket API 
 `src/lib/ticket-attachments.ts` publishes the uploaded URLs over a window event and that client-side
 fact wins until the prop's value actually changes. Without it the 30 s read cache (§11.3) could leave
 the Close button disabled until a **second** report was uploaded.
+
+### Engineer lifecycle — resignation (never delete)
+There are **no foreign keys anywhere in `schema.sql`**, so deleting an engineer row does not cascade —
+but `tickets` only stores `AssignedEngineer` (the ID, no name), and attendance columns are built from
+the `engineers` table, so a delete silently strips the name off every historical ticket and erases the
+person from **past** attendance reports. Six tables (`pms_schedule`, `planned_visits`,
+`customer_visit_rules`, `engineer_location_logs`, `leave_requests`, `push_subscriptions`) would keep
+orphan IDs, and an active visit rule would keep spawning tickets for a ghost.
+
+Instead: `PATCH /api/engineers/[engineerId]` with `ActiveStatus: "Resigned"` (Admin only) —
+**refuses with 409 while the engineer still has non-Closed tickets**, then sets
+`engineers.ActiveStatus = "Resigned"` *and* the linked `users.ActiveStatus = "Inactive"`, which blocks
+login through the existing check in `auth.ts`. Reversible with `ActiveStatus: "Available"`. No schema
+change — `ActiveStatus` already existed and nothing else writes `"Resigned"`.
+
+Status semantics live in **`src/lib/engineers.ts`** (`isEngineerActive`, `isEngineerResigned`,
+`assignableEngineers(list, keepEngineerId)`, `engineerOptionLabel`) and the server guard in
+**`src/lib/engineer-guard.ts`** (`resignedEngineerError`), which rejects *new* assignments in
+`POST /api/tickets`, `PATCH /api/tickets/[id]`, `planner/plans`, `planner/rules` and `planner/pms`.
+The rule throughout: **hide resigned engineers from forward-looking pickers, keep them everywhere
+historical.**
+- Assignment selects (`TicketForm`, the three planner assignment selects) exclude them — but
+  `assignableEngineers(engineers, currentlyAssignedId)` keeps the one already on the record, so editing
+  an old ticket cannot silently clear the assignment.
+- Read-only *filters* (`/tickets`, planner, attendance engineer picker) keep them, labelled `(Resigned)`.
+- `/maps` drops them from the marker list and the sidebar roster; dashboard `activeEngineers` excludes them.
+- Attendance keeps a resigned engineer's column only for ranges that contain their events
+  (`AttendanceEngineer.resigned`), and the daily PDF prints them only on days they worked.
 
 ### Planner (`src/lib/planner-tickets.ts`, `src/components/planner-calendar.tsx` — 627 lines)
 - Creating a plan **immediately creates its ticket**, but with `ResponseType = "Planner scheduled for 9 AM NPT"`.
@@ -337,6 +366,10 @@ line) touch **no schema, no `columns` allow-list and no types** — they need no
    (see `src/lib/ticket-attachments.ts`).
 4. Planner activation depends on someone loading `/tickets`, `/planner`, or the notification poll —
    a quiet day means late activation. There is no cron for it.
+   4b. **Sessions are JWT with no per-request DB check** (`auth.ts` has no `maxAge`, so NextAuth's
+   30-day default applies). Marking a user Inactive/Resigned blocks the *next* sign-in; an already
+   issued session cookie keeps working until it expires. Adding a live check would cost one uncached
+   `users` read per request.
 5. PMS generation is capped at **100 rows** per call; long warranties/contracts silently truncate.
 6. `installationToMachine()` runs over **all** installations on every `machines()` call — O(n·m) with
    `contracts` and `device_models`. Fine at current scale, will not stay fine.
@@ -361,6 +394,7 @@ line) touch **no schema, no `columns` allow-list and no types** — they need no
 | Change planner behavior | `src/lib/planner-tickets.ts` + `src/components/planner-calendar.tsx` |
 | Change attendance/report | `src/lib/attendance.ts`, `src/lib/daily-report-pdf.ts`, `src/lib/daily-report-email.ts` |
 | Change ticket closure / engineer remarks | `src/components/ticket-close-panel.tsx` + `src/lib/ticket-attachments.ts` |
+| Change engineer status / resignation rules | `src/lib/engineers.ts` + `src/lib/engineer-guard.ts` + `src/app/api/engineers/[engineerId]/route.ts` |
 | Change service-center flow or tasks | `src/lib/service-center-actions.ts`, `src/lib/service-center.ts`, `src/components/service-center-task-form.tsx` |
 | Change notifications/push | `src/lib/notifications.ts`, `src/lib/push-notifications.ts` |
 | Change file storage | `src/lib/storage/service.ts` → `src/lib/zoho/workdrive.ts` |

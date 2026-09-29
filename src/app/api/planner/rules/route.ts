@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/permissions";
+import { resignedEngineerError } from "@/lib/engineer-guard";
 import { dataService } from "@/lib/turso/service";
 import { compactId } from "@/lib/utils";
 import type { CustomerVisitRule } from "@/types/service";
@@ -18,6 +19,9 @@ export async function POST(request: Request) {
   if (!customerId || !startDate || !Number.isFinite(frequencyDays) || frequencyDays < 1) {
     return NextResponse.json({ error: "Customer, start date, and visit frequency are required" }, { status: 400 });
   }
+
+  const resignedError = await resignedEngineerError(String(body.AssignedEngineer ?? ""));
+  if (resignedError) return NextResponse.json({ error: resignedError }, { status: 400 });
 
   const now = new Date().toISOString();
   const rule: CustomerVisitRule = {
@@ -58,6 +62,10 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Visit frequency must be at least 1 day" }, { status: 400 });
     }
     patch.FrequencyDays = String(Math.round(frequency));
+  }
+  if (body.AssignedEngineer != null && String(body.AssignedEngineer) !== existing.AssignedEngineer) {
+    const resignedError = await resignedEngineerError(String(body.AssignedEngineer));
+    if (resignedError) return NextResponse.json({ error: resignedError }, { status: 400 });
   }
   if (body.AssignedEngineer != null) patch.AssignedEngineer = String(body.AssignedEngineer);
   if (body.StartDate != null) patch.StartDate = String(body.StartDate);

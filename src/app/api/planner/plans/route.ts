@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/permissions";
+import { resignedEngineerError } from "@/lib/engineer-guard";
 import { serviceTypes } from "@/lib/constants";
 import { buildPlannerTicket, createPlannerTicket, plannerActivationDue } from "@/lib/planner-tickets";
 import { dataService } from "@/lib/turso/service";
@@ -22,6 +23,8 @@ export async function POST(request: Request) {
   if (!customerId || !visitDate || !assignedEngineer) {
     return NextResponse.json({ error: "Customer, visit date, and engineer are required" }, { status: 400 });
   }
+  const resignedError = await resignedEngineerError(assignedEngineer);
+  if (resignedError) return NextResponse.json({ error: resignedError }, { status: 400 });
 
   const now = new Date().toISOString();
   const [customers, machines, contracts, tickets] = await Promise.all([
@@ -88,6 +91,10 @@ export async function PATCH(request: Request) {
     UpdatedAt: new Date().toISOString(),
   };
   if (body.Status && statuses.includes(body.Status as PlannerStatus)) patch.Status = body.Status as PlannerStatus;
+  if (userIsAdmin && body.AssignedEngineer != null && String(body.AssignedEngineer) !== existing.AssignedEngineer) {
+    const resignedError = await resignedEngineerError(String(body.AssignedEngineer));
+    if (resignedError) return NextResponse.json({ error: resignedError }, { status: 400 });
+  }
   if (userIsAdmin && body.AssignedEngineer != null) patch.AssignedEngineer = String(body.AssignedEngineer);
   if (userIsAdmin && body.VisitDate != null) patch.VisitDate = String(body.VisitDate);
   if (userIsAdmin && body.Remarks != null) patch.Remarks = String(body.Remarks).slice(0, 1000);

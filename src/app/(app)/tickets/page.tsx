@@ -12,6 +12,7 @@ import { contractTypes, serviceTypes, ticketStatuses } from "@/lib/constants";
 import { getTicketsWithRelations } from "@/lib/data";
 import { isAdmin } from "@/lib/permissions";
 import { activateDuePlannerTickets } from "@/lib/planner-tickets";
+import { engineerOptionLabel } from "@/lib/engineers";
 import { dataService } from "@/lib/turso/service";
 
 export default async function TicketsPage({
@@ -133,7 +134,7 @@ export default async function TicketsPage({
                 <option value="">All engineers</option>
                 {engineers.map((engineer) => (
                   <option key={engineer.EngineerID} value={engineer.EngineerID}>
-                    {engineer.EngineerName}
+                    {engineerOptionLabel(engineer)}
                   </option>
                 ))}
                 </SelectNative>

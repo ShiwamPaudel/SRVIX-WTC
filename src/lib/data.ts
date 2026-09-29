@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isEngineerActive } from "@/lib/engineers";
 import { dataService } from "@/lib/turso/service";
 import type { Customer, Engineer, Machine, Ticket, TicketLog, TicketWithRelations, UserRole } from "@/types/service";
 
@@ -105,7 +106,7 @@ export async function getDashboardMetrics(role?: UserRole, engineerId?: string) 
     : dataset.pmsSchedule;
 
   const pendingPms = visibleTickets.filter((ticket) => ticket.TicketStatus === "Pending" && ticket.ServiceType === "PMS").length;
-  const activeEngineers = dataset.engineers.filter((engineer) => engineer.ActiveStatus !== "Inactive").length;
+  const activeEngineers = dataset.engineers.filter((engineer) => isEngineerActive(engineer)).length;
 
   return {
     ...dataset,

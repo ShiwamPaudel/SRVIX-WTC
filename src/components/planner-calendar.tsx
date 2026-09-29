@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { SelectNative } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { serviceTypes } from "@/lib/constants";
+import { assignableEngineers, engineerOptionLabel } from "@/lib/engineers";
 import { cn, addDays, formatDate, toDateInputValue } from "@/lib/utils";
 import type {
   Customer,
@@ -122,12 +123,14 @@ export function PlannerCalendar({
   currentEngineerId?: string;
 }) {
   const today = new Date();
+  // Resigned engineers stay in the filter (to read their past plans) but take no new assignments.
+  const activeEngineers = assignableEngineers(engineers);
   const [month, setMonth] = useState(startOfMonth(today));
   const [selectedDate, setSelectedDate] = useState(toDateInputValue(today));
   const [engineerFilter, setEngineerFilter] = useState("");
   const [planCustomer, setPlanCustomer] = useState(customers[0]?.CustomerID ?? "");
   const [planMachine, setPlanMachine] = useState("");
-  const [planEngineer, setPlanEngineer] = useState(engineers[0]?.EngineerID ?? "");
+  const [planEngineer, setPlanEngineer] = useState(activeEngineers[0]?.EngineerID ?? "");
   const [planServiceType, setPlanServiceType] = useState("General Visit");
   const [planRemarks, setPlanRemarks] = useState("");
   const [ruleCustomer, setRuleCustomer] = useState(customers[0]?.CustomerID ?? "");
@@ -348,7 +351,7 @@ export function PlannerCalendar({
                   <option value="">All engineers</option>
                   {engineers.map((engineer) => (
                     <option key={engineer.EngineerID} value={engineer.EngineerID}>
-                      {engineer.EngineerName}
+                      {engineerOptionLabel(engineer)}
                     </option>
                   ))}
                 </SelectNative>
@@ -422,7 +425,7 @@ export function PlannerCalendar({
                 <Input type="number" min="1" value={ruleFrequency} onChange={(event) => setRuleFrequency(event.target.value)} aria-label="Visit frequency" />
                 <SelectNative value={ruleEngineer} onChange={(event) => setRuleEngineer(event.target.value)}>
                   <option value="">Unassigned</option>
-                  {engineers.map((engineer) => (
+                  {activeEngineers.map((engineer) => (
                     <option key={engineer.EngineerID} value={engineer.EngineerID}>
                       {engineer.EngineerName}
                     </option>
@@ -531,9 +534,9 @@ export function PlannerCalendar({
                     disabled={!canAdmin || isPending}
                   >
                     <option value="">Unassigned</option>
-                    {engineers.map((engineer) => (
+                    {assignableEngineers(engineers, event.engineerId).map((engineer) => (
                       <option key={engineer.EngineerID} value={engineer.EngineerID}>
-                        {engineer.EngineerName}
+                        {engineerOptionLabel(engineer)}
                       </option>
                     ))}
                   </SelectNative>
@@ -578,7 +581,7 @@ export function PlannerCalendar({
               </SelectNative>
               <SelectNative value={planEngineer} onChange={(event) => setPlanEngineer(event.target.value)}>
                 <option value="">Assign engineer</option>
-                {engineers.map((engineer) => (
+                {activeEngineers.map((engineer) => (
                   <option key={engineer.EngineerID} value={engineer.EngineerID}>
                     {engineer.EngineerName}
                   </option>

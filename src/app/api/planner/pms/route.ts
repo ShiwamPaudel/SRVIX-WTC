@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/permissions";
+import { resignedEngineerError } from "@/lib/engineer-guard";
 import { notifyEngineerTicketAssigned } from "@/lib/push-notifications";
 import { dataService } from "@/lib/turso/service";
 import { compactId } from "@/lib/utils";
@@ -16,6 +17,11 @@ export async function PATCH(request: Request) {
   if (!body.PMSID) return NextResponse.json({ error: "PMSID is required" }, { status: 400 });
   const existing = (await dataService.pmsSchedule()).find((row) => row.PMSID === body.PMSID);
   if (!existing) return NextResponse.json({ error: "PMS not found" }, { status: 404 });
+
+  if (body.AssignedEngineer != null && String(body.AssignedEngineer) !== existing.AssignedEngineer) {
+    const resignedError = await resignedEngineerError(String(body.AssignedEngineer));
+    if (resignedError) return NextResponse.json({ error: resignedError }, { status: 400 });
+  }
 
   const patch: Partial<PMSSchedule> = {};
   if (body.AssignedEngineer != null) patch.AssignedEngineer = String(body.AssignedEngineer);

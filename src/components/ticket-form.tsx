@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Clock3, Save } from "lucide-react";
 import { toast } from "sonner";
 import { serviceReportRequiredForServiceType, serviceTypes, ticketStatuses } from "@/lib/constants";
+import { assignableEngineers, engineerOptionLabel } from "@/lib/engineers";
 import { compactId } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +85,9 @@ export function TicketForm({
   );
   const selectedMachine = machines.find((machine) => machine.MachineID === machineId);
   const assignedEngineer = engineers.find((engineer) => engineer.EngineerID === form.watch("AssignedEngineer"));
+  // Resigned engineers are hidden, except the one already on this ticket - dropping them from the
+  // list would silently clear the assignment when an old ticket is edited.
+  const selectableEngineers = assignableEngineers(engineers, ticket?.AssignedEngineer);
 
   useEffect(() => {
     if (selectedMachine && customerId && selectedMachine.CustomerID !== customerId) {
@@ -218,8 +222,8 @@ export function TicketForm({
             {canAssign ? (
               <SelectNative {...form.register("AssignedEngineer")}>
                 <option value="">Assign engineer</option>
-                {engineers.map((engineer) => (
-                  <option key={engineer.EngineerID} value={engineer.EngineerID}>{engineer.EngineerName}</option>
+                {selectableEngineers.map((engineer) => (
+                  <option key={engineer.EngineerID} value={engineer.EngineerID}>{engineerOptionLabel(engineer)}</option>
                 ))}
               </SelectNative>
             ) : (

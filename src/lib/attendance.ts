@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isEngineerResigned } from "@/lib/engineers";
 import { machineLabel } from "@/lib/service-center";
 import { dataService } from "@/lib/turso/service";
 import { APP_TIME_ZONE, toDateInputValue } from "@/lib/utils";
@@ -8,6 +9,7 @@ export type AttendanceEngineer = {
   id: string;
   name: string;
   department?: string;
+  resigned?: boolean;
 };
 
 export type AttendanceEvent = {
@@ -147,6 +149,7 @@ export async function attendanceReportData(allowedEngineerIds?: Set<string>) {
       id: engineer.EngineerID,
       name: engineer.EngineerName,
       department: engineer.Department,
+      resigned: isEngineerResigned(engineer),
     }));
 
   const events: AttendanceEvent[] = [

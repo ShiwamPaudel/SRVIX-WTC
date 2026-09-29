@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/permissions";
+import { resignedEngineerError } from "@/lib/engineer-guard";
 import { compactId, uniqueCompactId } from "@/lib/utils";
 import { machineCoverage } from "@/lib/coverage";
 import { dataService } from "@/lib/turso/service";
@@ -40,6 +41,8 @@ export async function POST(request: Request) {
   if (body.TicketStatus === "Closed" && serviceReportRequiredForServiceType(body.ServiceType) && !hasAttachment(body.AttachmentURLs)) {
     return NextResponse.json({ error: "A service report attachment is required before closing a ticket." }, { status: 400 });
   }
+  const resignedError = await resignedEngineerError(body.AssignedEngineer);
+  if (resignedError) return NextResponse.json({ error: resignedError }, { status: 400 });
   const now = new Date().toISOString();
   const [tickets, machines, customers, contracts] = await Promise.all([
     dataService.tickets(),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/permissions";
+import { resignedEngineerError } from "@/lib/engineer-guard";
 import { compactId } from "@/lib/utils";
 import { getTicket } from "@/lib/data";
 import { dataService } from "@/lib/turso/service";
@@ -90,6 +91,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ti
   }
   if (!isAdmin(session.user.role) && body.AssignedEngineer != null && body.AssignedEngineer !== existingTicket.AssignedEngineer) {
     return NextResponse.json({ error: "Admin access required to assign engineers" }, { status: 403 });
+  }
+  if (body.AssignedEngineer != null && body.AssignedEngineer !== existingTicket.AssignedEngineer) {
+    const resignedError = await resignedEngineerError(body.AssignedEngineer);
+    if (resignedError) return NextResponse.json({ error: resignedError }, { status: 400 });
   }
   const serviceType = body.ServiceType ?? existingTicket.ServiceType;
   if (body.TicketStatus === "Closed" && serviceReportRequiredForServiceType(serviceType) && !hasAttachment(body.AttachmentURLs || existingTicket.AttachmentURLs)) {

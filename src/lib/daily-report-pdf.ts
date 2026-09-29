@@ -252,11 +252,6 @@ export async function dailyReportPdf({
 
   return collectDocument(doc, () => {
     const columnWidth = (page.width - page.marginX * 2 - page.columnGap) / 2;
-    const sortedEngineers = [...engineers].sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
-    const midpoint = Math.ceil(sortedEngineers.length / 2);
-    const left = sortedEngineers.slice(0, midpoint);
-    const right = sortedEngineers.slice(midpoint);
-    const rows = Array.from({ length: Math.max(left.length, right.length) }, (_, index) => [left[index], right[index]] as const);
     const eventsForDate = events
       .filter((event) => event.date === date)
       .sort((a, b) => eventTime(a.sortAt) - eventTime(b.sortAt));
@@ -264,6 +259,14 @@ export async function dailyReportPdf({
       grouped.set(event.engineerId, [...(grouped.get(event.engineerId) ?? []), event]);
       return grouped;
     }, new Map());
+    // Resigned engineers are printed only on days they actually worked.
+    const sortedEngineers = engineers
+      .filter((engineer) => !engineer.resigned || eventsByEngineer.has(engineer.id))
+      .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+    const midpoint = Math.ceil(sortedEngineers.length / 2);
+    const left = sortedEngineers.slice(0, midpoint);
+    const right = sortedEngineers.slice(midpoint);
+    const rows = Array.from({ length: Math.max(left.length, right.length) }, (_, index) => [left[index], right[index]] as const);
 
     drawHeader(doc, date);
     let y = page.startY;
